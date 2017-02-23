@@ -1,4 +1,4 @@
-package fit_manyak_at_ngs_dot_ru.test_tasks.ffs.messages;
+package fit_manyak_at_ngs_dot_ru.testtasks.ffs.messages;
 
 import java.util.ResourceBundle;
 
