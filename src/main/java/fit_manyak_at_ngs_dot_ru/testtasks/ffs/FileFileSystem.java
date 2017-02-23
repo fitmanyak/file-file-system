@@ -16,8 +16,9 @@ import java.nio.file.StandardOpenOption;
 @SuppressWarnings("WeakerAccess")
 public class FileFileSystem {
     public static void main(String[] args) {
-        try (FileChannel channel = FileChannel.open(Paths.get("test.ffs"),
-                StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+        try (FileChannel channel = FileChannel
+                .open(Paths.get("test.ffs"), StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
+                        StandardOpenOption.CREATE)) {
 
             ByteBuffer buffer = ByteBuffer.allocateDirect(2 + 1 + 1 + 1);
             buffer.putShort((short) 0xFFF5);
