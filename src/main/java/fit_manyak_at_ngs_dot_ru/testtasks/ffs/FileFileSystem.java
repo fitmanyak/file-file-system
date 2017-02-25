@@ -1,5 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -12,10 +13,14 @@ public class FileFileSystem {
     private static final String TEST_PATH = "test.ffs";
     private static final long TEST_SIZE = 12345678;
 
+    public static void format(Path path, long size) throws IOException, IllegalArgumentException {
+        BlockManager.format(path, size, DirectoryEntry::formatRootDirectoryEntry);
+    }
+
     public static void main(String[] args) {
         try {
             Path testPath = Paths.get(TEST_PATH);
-            BlockManager.format(testPath, TEST_SIZE, DirectoryEntry::formatRootDirectoryEntry);
+            format(testPath, TEST_SIZE);
             BlockManager.check(testPath, DirectoryEntry::checkRootDirectoryEntry);
         } catch (Exception e) {
             e.printStackTrace();
