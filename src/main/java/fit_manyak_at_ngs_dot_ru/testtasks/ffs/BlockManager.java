@@ -206,7 +206,7 @@ public class BlockManager implements Closeable {
             }
 
             int freeBlockChainHead = fixedSizeData.getInt();
-            checkBlockChainHead(() -> (freeBlockChainHead == 0), freeBlockChainHead,
+            checkBlockChainHead(() -> (freeBlockCount == 0), freeBlockChainHead,
                     Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
 
             if (channel.size() != getTotalSize(blockCount)) {
