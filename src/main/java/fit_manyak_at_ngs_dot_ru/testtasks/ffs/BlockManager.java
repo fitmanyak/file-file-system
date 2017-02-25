@@ -2,6 +2,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.messages.Messages;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -16,7 +17,7 @@ import java.util.function.Supplier;
  *         Created on 25.02.2017.
  */
 
-public class BlockManager {
+public class BlockManager implements Closeable {
     private static final int SIGNATURE_SIZE = 2;
     private static final short SIGNATURE = (short) 0xFFF5;
 
@@ -64,6 +65,35 @@ public class BlockManager {
     @FunctionalInterface
     private interface IReaderToBuffer {
         public int read(ByteBuffer buffer) throws IOException;
+    }
+
+    private final FileChannel channel;
+
+    private final int blockCount;
+
+    private final int freeBlockCount;
+    private final int freeBlockChainHead;
+    private final ByteBuffer freeBlockData;
+
+    private final long blockTableOffset;
+
+    private BlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
+                         long blockTableOffset) {
+
+        this.channel = channel;
+
+        this.blockCount = blockCount;
+
+        this.freeBlockCount = freeBlockCount;
+        this.freeBlockChainHead = freeBlockChainHead;
+        this.freeBlockData = ByteBuffer.allocateDirect(FREE_BLOCK_DATA_SIZE);
+
+        this.blockTableOffset = blockTableOffset;
+    }
+
+    @Override
+    public void close() throws IOException {
+        channel.close();
     }
 
     public static void format(Path path, long size, Consumer<ByteBuffer> rootDirectoryEntryFormatter)
@@ -139,8 +169,13 @@ public class BlockManager {
         flipBufferAndWrite(buffer, channel);
     }
 
-    public static void check(Path path, IRootDirectoryEntryChecker rootDirectoryEntryChecker) throws IOException {
-        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+    public static BlockManager mount(Path path, IRootDirectoryEntryChecker rootDirectoryEntryChecker)
+            throws IOException {
+
+        FileChannel channel = null;
+        try {
+            channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+
             ByteBuffer fixedSizeData =
                     readAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
 
@@ -184,9 +219,22 @@ public class BlockManager {
                 throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
             }
 
+            long blockTableOffset = getBlockTableOffset(blockCount);
             ByteBuffer rootDirectoryEntry =
-                    readAndFlipBuffer(BLOCK_SIZE, channel, getBlockTableOffset(blockCount), Messages.BLOCK_READ_ERROR);
+                    readAndFlipBuffer(BLOCK_SIZE, channel, blockTableOffset, Messages.BLOCK_READ_ERROR);
             rootDirectoryEntryChecker.check(rootDirectoryEntry);
+
+            return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, blockTableOffset);
+        } catch (Throwable t) {
+            if (channel != null) {
+                try {
+                    channel.close();
+                } catch (Throwable closeThrowable) {
+                    t.addSuppressed(closeThrowable);
+                }
+            }
+
+            throw t;
         }
     }
 
