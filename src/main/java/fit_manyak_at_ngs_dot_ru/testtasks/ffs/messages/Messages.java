@@ -22,11 +22,15 @@ public class Messages {
     public static final String BAD_BLOCK_COUNT_ERROR = BUNDLE.getString("BAD_BLOCK_COUNT_ERROR");
     public static final String BAD_FREE_BLOCK_COUNT_ERROR = BUNDLE.getString("BAD_FREE_BLOCK_COUNT_ERROR");
     public static final String BAD_FREE_BLOCK_CHAIN_HEAD_ERROR = BUNDLE.getString("BAD_FREE_BLOCK_CHAIN_HEAD_ERROR");
+
     public static final String BAD_SIZE_ERROR = BUNDLE.getString("BAD_SIZE_ERROR");
+
     public static final String NEXT_BLOCK_INDEX_READ_ERROR = BUNDLE.getString("NEXT_BLOCK_INDEX_READ_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR");
+
     public static final String BLOCK_READ_ERROR = BUNDLE.getString("BLOCK_READ_ERROR");
+
     public static final String BAD_ROOT_DIRECTORY_ENTRY_PARENT_DIRECTORY_ENTRY_BLOCK_CHAIN_HEAD_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_PARENT_DIRECTORY_ENTRY_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR =
