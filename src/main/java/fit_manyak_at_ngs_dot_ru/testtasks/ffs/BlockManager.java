@@ -75,10 +75,14 @@ public class BlockManager implements Closeable {
     private final int freeBlockChainHead;
     private final ByteBuffer freeBlockData;
 
+    private final ByteBuffer nextBlockIndex;
+
     private final long blockTableOffset;
 
+    private final ByteBuffer block;
+
     private BlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
-                         long blockTableOffset) {
+                         ByteBuffer nextBlockIndex, long blockTableOffset, ByteBuffer block) {
 
         this.channel = channel;
 
@@ -88,7 +92,11 @@ public class BlockManager implements Closeable {
         this.freeBlockChainHead = freeBlockChainHead;
         this.freeBlockData = ByteBuffer.allocateDirect(FREE_BLOCK_DATA_SIZE);
 
+        this.nextBlockIndex = nextBlockIndex;
+
         this.blockTableOffset = blockTableOffset;
+
+        this.block = block;
     }
 
     @Override
@@ -177,7 +185,7 @@ public class BlockManager implements Closeable {
             channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
 
             ByteBuffer fixedSizeData =
-                    readAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
+                    createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
 
             if (fixedSizeData.getShort() != SIGNATURE) {
                 throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
@@ -214,17 +222,18 @@ public class BlockManager implements Closeable {
             }
 
             ByteBuffer rootDirectoryEntryBlockNextBlockIndex =
-                    readAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+                    createReadAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
             if (rootDirectoryEntryBlockNextBlockIndex.getInt() != NULL_BLOCK_INDEX) {
                 throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
             }
 
             long blockTableOffset = getBlockTableOffset(blockCount);
             ByteBuffer rootDirectoryEntry =
-                    readAndFlipBuffer(BLOCK_SIZE, channel, blockTableOffset, Messages.BLOCK_READ_ERROR);
+                    createReadAndFlipBuffer(BLOCK_SIZE, channel, blockTableOffset, Messages.BLOCK_READ_ERROR);
             rootDirectoryEntryChecker.check(rootDirectoryEntry);
 
-            return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, blockTableOffset);
+            return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead,
+                    rootDirectoryEntryBlockNextBlockIndex, blockTableOffset, rootDirectoryEntry);
         } catch (Throwable t) {
             if (channel != null) {
                 try {
@@ -238,17 +247,19 @@ public class BlockManager implements Closeable {
         }
     }
 
-    private static ByteBuffer readAndFlipBuffer(int size, FileChannel channel, String errorMessage) throws IOException {
-        return readAndFlipBuffer(size, channel::read, errorMessage);
-    }
-
-    private static ByteBuffer readAndFlipBuffer(int size, FileChannel channel, long position, String errorMessage)
+    private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, String errorMessage)
             throws IOException {
 
-        return readAndFlipBuffer(size, buffer -> channel.read(buffer, position), errorMessage);
+        return createReadAndFlipBuffer(size, channel::read, errorMessage);
     }
 
-    private static ByteBuffer readAndFlipBuffer(int size, IReaderToBuffer reader, String errorMessage)
+    private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, long position, String errorMessage)
+            throws IOException {
+
+        return createReadAndFlipBuffer(size, buffer -> channel.read(buffer, position), errorMessage);
+    }
+
+    private static ByteBuffer createReadAndFlipBuffer(int size, IReaderToBuffer reader, String errorMessage)
             throws IOException {
 
         ByteBuffer buffer = ByteBuffer.allocateDirect(size);
