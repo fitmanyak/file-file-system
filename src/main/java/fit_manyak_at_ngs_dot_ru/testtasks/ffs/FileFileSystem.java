@@ -9,6 +9,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Supplier;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -47,8 +48,38 @@ public class FileFileSystem {
 
     private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
 
+    private static final int NULL_BLOCK_INDEX = 0;
+
+    private static final int DIRECTORY_ENTRY_FLAGS_SIZE = 4;
+    private static final int DIRECTORY_ENTRY_FILE_FLAGS = 0;
+    private static final int DIRECTORY_ENTRY_DIRECTORY_FLAGS = 1;
+
+    private static final int DIRECTORY_ENTRY_NAME_SIZE = 2;
+    private static final int DIRECTORY_ENTRY_NAME_MAXIMAL_SIZE = (1 << (8 * DIRECTORY_ENTRY_NAME_SIZE)) - 1;
+
+    private static final int DIRECTORY_ENTRY_FIXED_SIZE_DATA_SIZE =
+            BLOCK_INDEX_SIZE + DIRECTORY_ENTRY_FLAGS_SIZE + CONTENT_SIZE_SIZE + BLOCK_INDEX_SIZE +
+                    DIRECTORY_ENTRY_NAME_SIZE;
+
+    private static final int DIRECTORY_ENTRY_FIRST_BLOCK_NAME_AREA_SIZE =
+            BLOCK_SIZE - DIRECTORY_ENTRY_FIXED_SIZE_DATA_SIZE;
+
+    private static final long DIRECTORY_ENTRY_INITIAL_CONTENT_SIZE = 0L;
+
+    private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
+    private static final int ROOT_DIRECTORY_BLOCK_INDEX = 0;
+    private static final short ROOT_DIRECTORY_NAME_SIZE = 0;
+
+    private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
+
     private static final String TEST_PATH = "test.ffs";
     private static final long TEST_SIZE = 12345678;
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    private interface IReaderToBuffer {
+        public int read(ByteBuffer buffer) throws IOException;
+    }
 
     public static void format(Path path, long size) throws IOException, IllegalArgumentException {
         if (size < MINIMAL_SIZE || size > MAXIMAL_SIZE) {
@@ -62,25 +93,32 @@ public class FileFileSystem {
 
             try (FileChannel channel = file.getChannel()) {
                 int blockCount = (int) blockCountLong;
-                ByteBuffer fixedSizeData = allocateFixedSizeDataBuffer();
+                ByteBuffer fixedSizeData = ByteBuffer.allocateDirect(FIXED_SIZE_DATA_SIZE);
                 fixedSizeData.putShort(SIGNATURE);
                 fixedSizeData.put(BLOCK_SIZE_RATIO);
                 fixedSizeData.put(BLOCK_INDEX_SIZE_EXPONENT);
                 fixedSizeData.put(CONTENT_SIZE_SIZE_EXPONENT);
                 fixedSizeData.putInt(blockCount);
-                fixedSizeData.putInt(blockCount);
-                fixedSizeData.putInt(0);
-
+                fixedSizeData.putInt(blockCount - ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
+                fixedSizeData.putInt(ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
                 flipBufferAndWrite(fixedSizeData, channel);
 
-                ByteBuffer nextBlockIndex = allocateBlockIndexBuffer();
-                for (int i = 0; i < blockCount; i++) {
-                    writeBlockIndex((i + 1), nextBlockIndex, channel);
+                ByteBuffer nextBlockIndex = ByteBuffer.allocateDirect(BLOCK_INDEX_SIZE);
+                writeBlockIndexAndFlipBuffer(NULL_BLOCK_INDEX, nextBlockIndex, channel);
 
-                    nextBlockIndex.flip();
+                for (int i = FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX; i < blockCount; i++) {
+                    writeBlockIndexAndFlipBuffer(i, nextBlockIndex, channel);
                 }
 
-                writeBlockIndex(0, nextBlockIndex, channel);
+                writeBlockIndex(NULL_BLOCK_INDEX, nextBlockIndex, channel);
+
+                ByteBuffer rootDirectoryEntry = ByteBuffer.allocateDirect(BLOCK_SIZE);
+                rootDirectoryEntry.putInt(NULL_BLOCK_INDEX);
+                rootDirectoryEntry.putInt(DIRECTORY_ENTRY_DIRECTORY_FLAGS);
+                rootDirectoryEntry.putLong(DIRECTORY_ENTRY_INITIAL_CONTENT_SIZE);
+                rootDirectoryEntry.putInt(NULL_BLOCK_INDEX);
+                rootDirectoryEntry.putShort(ROOT_DIRECTORY_NAME_SIZE);
+                flipBufferAndWrite(rootDirectoryEntry, channel);
             }
         }
     }
@@ -101,17 +139,16 @@ public class FileFileSystem {
         return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
 
-    private static ByteBuffer allocateFixedSizeDataBuffer() {
-        return ByteBuffer.allocateDirect(FIXED_SIZE_DATA_SIZE);
-    }
-
-    private static ByteBuffer allocateBlockIndexBuffer() {
-        return ByteBuffer.allocateDirect(BLOCK_INDEX_SIZE);
-    }
-
     private static void flipBufferAndWrite(ByteBuffer buffer, FileChannel channel) throws IOException {
         buffer.flip();
         channel.write(buffer);
+    }
+
+    private static void writeBlockIndexAndFlipBuffer(int index, ByteBuffer buffer, FileChannel channel)
+            throws IOException {
+
+        writeBlockIndex(index, buffer, channel);
+        buffer.flip();
     }
 
     private static void writeBlockIndex(int index, ByteBuffer buffer, FileChannel channel) throws IOException {
@@ -121,11 +158,8 @@ public class FileFileSystem {
 
     private static void check(Path path) throws IOException {
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
-            ByteBuffer fixedSizeData = allocateFixedSizeDataBuffer();
-            if (channel.read(fixedSizeData) != FIXED_SIZE_DATA_SIZE) {
-                throw new FileFileSystemException(Messages.BAD_SIZE_OF_FIXED_SIZE_DATA_ERROR);
-            }
-            fixedSizeData.flip();
+            ByteBuffer fixedSizeData =
+                    readAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
 
             if (fixedSizeData.getShort() != SIGNATURE) {
                 throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
@@ -153,10 +187,75 @@ public class FileFileSystem {
                 throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
             }
 
+            int freeBlockChainHead = fixedSizeData.getInt();
+            checkBlockChainHead(() -> (freeBlockChainHead == 0), freeBlockChainHead,
+                    Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
+
             if (channel.size() != getTotalSize(blockCount)) {
                 throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
             }
+
+            ByteBuffer rootDirectoryEntryBlockNextBlockIndex =
+                    readAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+            if (rootDirectoryEntryBlockNextBlockIndex.getInt() != NULL_BLOCK_INDEX) {
+                throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
+            }
+
+            ByteBuffer rootDirectoryEntry =
+                    readAndFlipBuffer(BLOCK_SIZE, channel, getBlockTableOffset(blockCount), Messages.BLOCK_READ_ERROR);
+            if (rootDirectoryEntry.getInt() != NULL_BLOCK_INDEX) {
+                throw new FileFileSystemException(
+                        Messages.BAD_ROOT_DIRECTORY_ENTRY_PARENT_DIRECTORY_ENTRY_BLOCK_CHAIN_HEAD_ERROR);
+            }
+
+            if (rootDirectoryEntry.getInt() != DIRECTORY_ENTRY_DIRECTORY_FLAGS) {
+                throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR);
+            }
+
+            long rootDirectoryContentSize = rootDirectoryEntry.getLong();
+            int rootDirectoryContentBlockChainHead = rootDirectoryEntry.getInt();
+            checkBlockChainHead(() -> (rootDirectoryContentSize == 0), rootDirectoryContentBlockChainHead,
+                    Messages.BAD_ROOT_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR);
+
+            if (rootDirectoryEntry.getShort() != ROOT_DIRECTORY_NAME_SIZE) {
+                throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR);
+            }
         }
+    }
+
+    private static ByteBuffer readAndFlipBuffer(int size, FileChannel channel, String errorMessage) throws IOException {
+        return readAndFlipBuffer(size, channel::read, errorMessage);
+    }
+
+    private static ByteBuffer readAndFlipBuffer(int size, FileChannel channel, long position, String errorMessage)
+            throws IOException {
+
+        return readAndFlipBuffer(size, buffer -> channel.read(buffer, position), errorMessage);
+    }
+
+    private static ByteBuffer readAndFlipBuffer(int size, IReaderToBuffer reader, String errorMessage)
+            throws IOException {
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(size);
+        if (reader.read(buffer) != size) {
+            throw new FileFileSystemException(errorMessage);
+        }
+        buffer.flip();
+
+        return buffer;
+    }
+
+    private static void checkBlockChainHead(Supplier<Boolean> isEmptyProvider, int blockChainHead, String errorMessage)
+            throws FileFileSystemException {
+
+        boolean isEmpty = isEmptyProvider.get();
+        if ((isEmpty && blockChainHead != NULL_BLOCK_INDEX) || (!isEmpty && blockChainHead == NULL_BLOCK_INDEX)) {
+            throw new FileFileSystemException(errorMessage);
+        }
+    }
+
+    private static long getBlockTableOffset(int blockCount) {
+        return FIXED_SIZE_DATA_SIZE + Integer.toUnsignedLong(blockCount) * BLOCK_INDEX_SIZE;
     }
 
     public static void main(String[] args) {
