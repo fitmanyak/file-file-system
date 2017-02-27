@@ -119,12 +119,12 @@ public class NewBlockManager {
         }
     }
 
-    private void readBlock(int blockIndex, ByteBuffer buffer) throws IOException {
-        // TODO
-    }
-
     private int getNextBlockIndex(int blockIndex) throws IOException {
         return 0;// TODO
+    }
+
+    private void readBlock(int blockIndex, ByteBuffer buffer) throws IOException {
+        // TODO
     }
 
     public BlockFile createBlockFile(long size, int blockChainHead) {
