@@ -28,7 +28,7 @@ public class NewBlockManager {
             this.position = 0L;
             this.inBlockPosition = 0;
             this.blockIndex = this.blockChainHead;
-            this.buffer = ByteBuffer.allocateDirect(BLOCK_SIZE);
+            this.buffer = ByteBuffer.allocate(BLOCK_SIZE);
             this.bufferValid = false;
         }
 
@@ -66,8 +66,7 @@ public class NewBlockManager {
 
                 int inBlockRemaining = BLOCK_SIZE - inBlockPosition;
                 if (inBlockRemaining > destinationRemaining) {
-                    byte[] b = buffer.array();
-                    destination.put(b, inBlockPosition, destinationRemaining);
+                    destination.put(buffer.array(), inBlockPosition, destinationRemaining);
 
                     position += destinationRemaining;
                     inBlockPosition += destinationRemaining;
