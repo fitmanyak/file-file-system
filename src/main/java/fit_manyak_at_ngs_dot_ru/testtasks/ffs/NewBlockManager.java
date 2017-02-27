@@ -41,7 +41,13 @@ public class NewBlockManager {
             if (position > size) {
                 position = size;
                 inBlockPosition = (int) (position % BLOCK_SIZE);
+                invalidateBuffer();
             }
+        }
+
+        private void invalidateBuffer() {
+            buffer.clear();
+            bufferValid = false;
         }
 
         public int getBlockChainHead() {
@@ -56,7 +62,7 @@ public class NewBlockManager {
             int destinationRemaining = destination.remaining();
             int totalRead = 0;
             while (destinationRemaining != 0 && position != size) {
-                fillBuffer();
+                readToBuffer();
 
                 int inBlockRemaining = BLOCK_SIZE - inBlockPosition;
                 if (inBlockRemaining > destinationRemaining) {
@@ -85,36 +91,27 @@ public class NewBlockManager {
             return totalRead;
         }
 
-        private void fillBuffer() throws IOException {
+        private void readToBuffer() throws IOException {
             if (!bufferValid) {
                 boolean blockStart = (inBlockPosition == 0);
                 if (position != 0 && blockStart) {
                     blockIndex = getNextBlockIndex(blockIndex);
                 }
 
-                readBlock();
+                try {
+                    readBlock(blockIndex, buffer);
+                    bufferValid = true;
+                }
+                catch (Throwable t) {
+                    invalidateBuffer();
+
+                    throw  t;
+                }
 
                 if (!blockStart) {
                     buffer.position(inBlockPosition);
                 }
             }
-        }
-
-        private void readBlock() throws IOException {
-            try {
-                NewBlockManager.this.readBlock(blockIndex, buffer);
-                bufferValid = true;
-            }
-            catch (Throwable t) {
-                invalidateBuffer();
-
-                throw  t;
-            }
-        }
-
-        private void invalidateBuffer() {
-            buffer.clear();
-            bufferValid = false;
         }
 
         public int write(ByteBuffer source) throws IOException {
