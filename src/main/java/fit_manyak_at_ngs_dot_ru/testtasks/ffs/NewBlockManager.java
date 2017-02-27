@@ -59,8 +59,8 @@ public class NewBlockManager {
                 throw new IllegalArgumentException("Read-only buffer");// TODO
             }
 
-            int destinationRemaining = destination.remaining();
             int totalRead = 0;
+            int destinationRemaining = destination.remaining();
             while (destinationRemaining != 0 && position != size) {
                 readToBuffer();
 
@@ -93,19 +93,21 @@ public class NewBlockManager {
         private void readToBuffer() throws IOException {
             if (!bufferValid) {
                 boolean blockStart = (inBlockPosition == 0);
+                int actualBlockIndex = blockIndex;
                 if (position != 0 && blockStart) {
-                    blockIndex = getNextBlockIndex(blockIndex);
+                    actualBlockIndex = getNextBlockIndex(actualBlockIndex);
                 }
 
                 try {
-                    readBlock(blockIndex, buffer);
-                    bufferValid = true;
+                    readBlock(actualBlockIndex, buffer);
                 }
                 catch (Throwable t) {
                     invalidateBuffer();
 
                     throw  t;
                 }
+                blockIndex = actualBlockIndex;
+                bufferValid = true;
 
                 if (!blockStart) {
                     buffer.position(inBlockPosition);
