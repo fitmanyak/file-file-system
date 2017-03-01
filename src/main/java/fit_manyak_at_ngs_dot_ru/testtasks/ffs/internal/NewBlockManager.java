@@ -1,4 +1,4 @@
-package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
+package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
