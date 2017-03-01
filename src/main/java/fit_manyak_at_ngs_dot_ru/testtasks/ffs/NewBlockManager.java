@@ -18,7 +18,7 @@ public class NewBlockManager {
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     private interface IBlockFileSizeChanger {
-        public void resize(int newRequiredBlockCount) throws IOException;
+        public void resize(int newBlockChainLength) throws IOException;
     }
 
     public class BlockFile {
@@ -115,7 +115,7 @@ public class NewBlockManager {
                 inBlockPosition = (int) (position % BLOCK_SIZE);
                 invalidateBuffer();
 
-                if (inChainIndex >= blockChainLength) {
+                if (Integer.compareUnsigned(inChainIndex, blockChainLength) >= 0) {
                     int newInChainIndex = blockChainLength - 1;
                     try {
                         blockIndex = getNextBlockIndex(blockChainHead, newInChainIndex);
@@ -131,7 +131,7 @@ public class NewBlockManager {
         private void resizeWithDecrease(int newBlockChainLength) throws IOException {
             int releasedBlockCount = blockChainLength - newBlockChainLength;
             if (releasedBlockCount != 0) {
-                if (inChainIndex < newBlockChainLength) {
+                if (Integer.compareUnsigned(inChainIndex, newBlockChainLength) < 0) {
                     free(blockIndex, getRemainingLength(), (newBlockChainLength - inChainIndex), releasedBlockCount);
                 } else {
                     blockChainHead = free(blockChainHead, blockChainLength, newBlockChainLength, blockIndex,
@@ -237,7 +237,7 @@ public class NewBlockManager {
     }
 
     private int getNextBlockIndex(int blockIndex, int moveCount) throws IOException {
-        for (int i = 0; i < moveCount; i++) {
+        for (int i = 0; Integer.compareUnsigned(i, moveCount) < 0; i++) {
             // TODO
         }
 
