@@ -45,8 +45,8 @@ public class NewBlockManager implements Closeable {
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    private interface IBlockFileWithinBlockIOOperationProcessor {
-        public void process(int blockIndex, int withinBlockPosition, ByteBuffer buffer) throws IOException;
+    private interface IBlockFileWithinBlockIOOperation {
+        public void perform(int blockIndex, int withinBlockPosition, ByteBuffer buffer) throws IOException;
     }
 
     public class BlockFile {
@@ -174,14 +174,13 @@ public class NewBlockManager implements Closeable {
             }
 
             try {
-                return processIOOperation(destination, NewBlockManager.this::readWithinBlock);
+                return performIOOperation(destination, NewBlockManager.this::readWithinBlock);
             } finally {
                 destination.limit(destination.position());
             }
         }
 
-        private int processIOOperation(ByteBuffer buffer,
-                                       IBlockFileWithinBlockIOOperationProcessor withinBlockIOOperationProcessor)
+        private int performIOOperation(ByteBuffer buffer, IBlockFileWithinBlockIOOperation operation)
                 throws IOException {
 
             int totalProcessed = 0;
@@ -197,7 +196,7 @@ public class NewBlockManager implements Closeable {
                 int withinBlockRemaining = BLOCK_SIZE - withinBlockPosition;
                 int toProcess = withinBlockRemaining < bufferRemaining ? withinBlockRemaining : bufferRemaining;
                 buffer.limit(buffer.position() + toProcess);
-                withinBlockIOOperationProcessor.process(actualBlockIndex, withinBlockPosition, buffer);
+                operation.perform(actualBlockIndex, withinBlockPosition, buffer);
 
                 totalProcessed += toProcess;
                 bufferRemaining -= toProcess;
@@ -225,7 +224,7 @@ public class NewBlockManager implements Closeable {
 
             int sourceLimit = source.limit();
             try {
-                return processIOOperation(source, NewBlockManager.this::writeWithinBlock);
+                return performIOOperation(source, NewBlockManager.this::writeWithinBlock);
             } finally {
                 source.limit(sourceLimit);
             }
@@ -282,9 +281,9 @@ public class NewBlockManager implements Closeable {
 
         int newFreeBlockCount = freeBlockCount - requiredBlockCount;
         int newFreeBlockChainHead = NULL_BLOCK_INDEX;
-        int allocatedBlockChainTail = NULL_BLOCK_INDEX;
-        boolean haveMoreFreeBlocks = newFreeBlockCount != 0;
-        if (haveMoreFreeBlocks) {
+        int allocatedBlockChainTail = freeBlockChainHead;
+        boolean hasMoreFreeBlocks = newFreeBlockCount != 0;
+        if (hasMoreFreeBlocks) {
             allocatedBlockChainTail = getNextBlockIndex(freeBlockChainHead, (requiredBlockCount - 1));
             newFreeBlockChainHead = getNextBlockIndex(allocatedBlockChainTail);
         }
@@ -298,7 +297,7 @@ public class NewBlockManager implements Closeable {
         freeBlockCount = newFreeBlockCount;
         freeBlockChainHead = newFreeBlockChainHead;
 
-        if (haveMoreFreeBlocks) {
+        if (hasMoreFreeBlocks) {
             nextBlockIndex.putInt(NULL_BLOCK_INDEX);
             flipBufferAndWrite(getNextBlockIndexPosition(allocatedBlockChainTail), nextBlockIndex,
                     "Write next block index error");// TODO
