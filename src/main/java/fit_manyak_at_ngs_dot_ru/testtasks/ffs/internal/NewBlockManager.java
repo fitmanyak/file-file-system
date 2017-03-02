@@ -1,17 +1,39 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
+
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
  *         Created on 26.02.2017.
  */
 
-public class NewBlockManager {
+public class NewBlockManager implements Closeable {
+    private static final int SIGNATURE_SIZE = 2;
+
+    private static final int BLOCK_SIZE_RATIO_SIZE = 1;
     private static final int BLOCK_SIZE = 512;
     private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
     private static final int BLOCK_SIZE_EXPONENT = 9;
+
+    private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
+    private static final int BLOCK_INDEX_SIZE = 4;
+
+    private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
+
+    private static final int SIGNATURE_AND_GEOMETRY_SIZE =
+            SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
+                    BLOCK_INDEX_SIZE;
+
+    private static final int FREE_BLOCK_DATA_SIZE = BLOCK_INDEX_SIZE + BLOCK_INDEX_SIZE;
+    private static final long FREE_BLOCK_DATA_POSITION = SIGNATURE_AND_GEOMETRY_SIZE;
+
+    private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
 
     private static final int NULL_BLOCK_INDEX = 0;
 
@@ -210,6 +232,35 @@ public class NewBlockManager {
         }
     }
 
+    private final FileChannel channel;
+
+    private int freeBlockCount;
+    private int freeBlockChainHead;
+    private final ByteBuffer freeBlockData;
+
+    private final ByteBuffer nextBlockIndex;
+
+    private final long blockTableOffset;
+
+    private NewBlockManager(FileChannel channel, int freeBlockCount, int freeBlockChainHead, ByteBuffer nextBlockIndex,
+                            long blockTableOffset) {
+
+        this.channel = channel;
+
+        this.freeBlockCount = freeBlockCount;
+        this.freeBlockChainHead = freeBlockChainHead;
+        this.freeBlockData = ByteBuffer.allocateDirect(FREE_BLOCK_DATA_SIZE);
+
+        this.nextBlockIndex = nextBlockIndex;
+
+        this.blockTableOffset = blockTableOffset;
+    }
+
+    @Override
+    public void close() throws IOException {
+        channel.close();
+    }
+
     private static int getRequiredBlockCount(long size) {
         return (int) getRequiredBlockCountLong(size);
     }
@@ -219,13 +270,92 @@ public class NewBlockManager {
     }
 
     private static void checkBlockFileSize(long size) throws IllegalArgumentException {
-        if (size < 0) {
+        if (size < 0L) {
             throw new IllegalArgumentException("Bad block file size");// TODO
         }
     }
 
     private int allocate(int requiredBlockCount) throws IOException {
-        return 0;// TODO
+        if (Integer.compareUnsigned(freeBlockCount, requiredBlockCount) < 0) {
+            throw new FileFileSystemException("Not enough free blocks");// TODO
+        }
+
+        int newFreeBlockCount = freeBlockCount - requiredBlockCount;
+        int newFreeBlockChainHead = NULL_BLOCK_INDEX;
+        int allocatedBlockChainTail = NULL_BLOCK_INDEX;
+        boolean haveMoreFreeBlocks = newFreeBlockCount != 0;
+        if (haveMoreFreeBlocks) {
+            allocatedBlockChainTail = getNextBlockIndex(freeBlockChainHead, (requiredBlockCount - 1));
+            newFreeBlockChainHead = getNextBlockIndex(allocatedBlockChainTail);
+        }
+
+        freeBlockData.putInt(newFreeBlockCount);
+        freeBlockData.putInt(newFreeBlockChainHead);
+        flipBufferAndWrite(FREE_BLOCK_DATA_POSITION, freeBlockData, "Write free block data error");// TODO
+
+        int allocatedBlockChainHead = freeBlockChainHead;
+
+        freeBlockCount = newFreeBlockCount;
+        freeBlockChainHead = newFreeBlockChainHead;
+
+        if (haveMoreFreeBlocks) {
+            nextBlockIndex.putInt(NULL_BLOCK_INDEX);
+            flipBufferAndWrite(getNextBlockIndexPosition(allocatedBlockChainTail), nextBlockIndex,
+                    "Write next block index error");// TODO
+        }
+
+        return allocatedBlockChainHead;
+    }
+
+    private int getNextBlockIndex(int blockIndex) throws IOException {
+        return getNextBlockIndex(blockIndex, 1);
+    }
+
+    private int getNextBlockIndex(int blockIndex, int moveCount) throws IOException {
+        for (int i = 0; Integer.compareUnsigned(i, moveCount) < 0; i++) {
+            readAndFlipBuffer(getNextBlockIndexPosition(blockIndex), nextBlockIndex,
+                    Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+            blockIndex = nextBlockIndex.getInt();
+            nextBlockIndex.clear();
+
+            if (blockIndex == NULL_BLOCK_INDEX) {
+                throw new FileFileSystemException("Unexpected end of block chain");// TODO
+            }
+        }
+
+        return blockIndex;
+    }
+
+    private void readAndFlipBuffer(long position, ByteBuffer destination, String errorMessage) throws IOException {
+        read(position, destination, errorMessage);
+
+        destination.flip();
+    }
+
+    private void read(long position, ByteBuffer destination, String errorMessage) throws IOException {
+        int destinationRemaining = destination.remaining();
+        if (channel.read(destination, position) != destinationRemaining) {
+            throw new FileFileSystemException(errorMessage);
+        }
+    }
+
+    private static long getNextBlockIndexPosition(int blockIndex) {
+        return FIXED_SIZE_DATA_SIZE + Integer.toUnsignedLong(blockIndex) * BLOCK_INDEX_SIZE;
+    }
+
+    private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage) throws IOException {
+        source.flip();
+
+        write(position, source, errorMessage);
+
+        source.clear();
+    }
+
+    private void write(long position, ByteBuffer source, String errorMessage) throws IOException {
+        int sourceRemaining = source.remaining();
+        if (channel.write(source, position) != sourceRemaining) {
+            throw new FileFileSystemException(errorMessage);
+        }
     }
 
     private void reallocate(int blockIndex, int remainingLength, int additionalBlockCount) throws IOException {
@@ -245,18 +375,6 @@ public class NewBlockManager {
         // TODO
 
         return delete ? NULL_BLOCK_INDEX : blockChainHead;
-    }
-
-    private int getNextBlockIndex(int blockIndex) throws IOException {
-        return getNextBlockIndex(blockIndex, 1);
-    }
-
-    private int getNextBlockIndex(int blockIndex, int moveCount) throws IOException {
-        for (int i = 0; Integer.compareUnsigned(i, moveCount) < 0; i++) {
-            // TODO
-        }
-
-        return blockIndex;
     }
 
     private void readWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer destination) throws IOException {
