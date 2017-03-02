@@ -46,7 +46,8 @@ public class NewBlockManager implements Closeable {
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     private interface IBlockFileWithinBlockIOOperation {
-        public void perform(int blockIndex, int withinBlockPosition, ByteBuffer buffer) throws IOException;
+        public void perform(int blockIndex, int withinBlockPosition, ByteBuffer buffer)
+                throws IOException, IllegalArgumentException;
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
@@ -275,6 +276,14 @@ public class NewBlockManager implements Closeable {
         }
     }
 
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    private interface IPositionedIOOperation {
+        public void perform(long position, ByteBuffer buffer, String errorMessage)
+                throws IOException, IllegalArgumentException;
+    }
+
     private final FileChannel channel;
 
     private int freeBlockCount;
@@ -436,13 +445,22 @@ public class NewBlockManager implements Closeable {
     private void readWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer destination)
             throws IOException, IllegalArgumentException {
 
-        // TODO
+        performIOOperationWithinBlock(blockIndex, withinBlockPosition, destination, Messages.BLOCK_READ_ERROR,
+                this::read);
+    }
+
+    private void performIOOperationWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer buffer,
+                                               String errorMessage, IPositionedIOOperation operation)
+            throws IOException, IllegalArgumentException {
+
+        operation.perform((blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE + withinBlockPosition),
+                buffer, errorMessage);
     }
 
     private void writeWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer source)
             throws IOException, IllegalArgumentException {
 
-        // TODO
+        performIOOperationWithinBlock(blockIndex, withinBlockPosition, source, "Block write error", this::write);// TODO
     }
 
     public BlockFile createBlockFile() {
