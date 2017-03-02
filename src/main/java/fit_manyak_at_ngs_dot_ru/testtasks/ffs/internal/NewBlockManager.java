@@ -231,6 +231,12 @@ public class NewBlockManager implements Closeable {
         }
     }
 
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    private interface IIOOperation {
+        public int perform(ByteBuffer buffer) throws IOException;
+    }
+
     private final FileChannel channel;
 
     private int freeBlockCount;
@@ -332,8 +338,14 @@ public class NewBlockManager implements Closeable {
     }
 
     private void read(long position, ByteBuffer destination, String errorMessage) throws IOException {
-        int destinationRemaining = destination.remaining();
-        if (channel.read(destination, position) != destinationRemaining) {
+        performIOOperation(destination, dst -> channel.read(dst, position), errorMessage);
+    }
+
+    private static void performIOOperation(ByteBuffer buffer, IIOOperation operation, String errorMessage)
+            throws IOException {
+
+        int bufferRemaining = buffer.remaining();
+        if (operation.perform(buffer) != bufferRemaining) {
             throw new FileFileSystemException(errorMessage);
         }
     }
@@ -351,10 +363,7 @@ public class NewBlockManager implements Closeable {
     }
 
     private void write(long position, ByteBuffer source, String errorMessage) throws IOException {
-        int sourceRemaining = source.remaining();
-        if (channel.write(source, position) != sourceRemaining) {
-            throw new FileFileSystemException(errorMessage);
-        }
+        performIOOperation(source, src -> channel.write(src, position), errorMessage);
     }
 
     private void reallocate(int blockIndex, int remainingLength, int additionalBlockCount) throws IOException {
