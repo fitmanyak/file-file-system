@@ -128,22 +128,7 @@ public class NewBlockManager implements Closeable {
             if (size == 0L) {
                 reset();
             } else if (position > size) {
-                position = size;
-                withinBlockPosition = (int) (position % BLOCK_SIZE);
-
-                int newWithinChainIndex = (int) (position / BLOCK_SIZE);
-                if (startNextBlock()) {
-                    newWithinChainIndex--;
-                }
-
-                if (withinChainIndex != newWithinChainIndex) {
-                    try {
-                        blockIndex = getNextBlockIndex(blockChainHead, newWithinChainIndex);
-                    } catch (Throwable t) {
-                        reset();
-                    }
-                    withinChainIndex = newWithinChainIndex;
-                }
+                setPosition(size);
             }
         }
 
@@ -160,12 +145,47 @@ public class NewBlockManager implements Closeable {
             }
         }
 
-        private boolean startNextBlock() {
-            return position != 0L && withinBlockPosition == 0;
-        }
-
         public int getBlockChainHead() {
             return blockChainHead;
+        }
+
+        public long getPosition() {
+            return position;
+        }
+
+        public void setPosition(long newPosition) throws IOException, IllegalArgumentException {
+            if (newPosition < 0L) {
+                throw new IllegalArgumentException("Bad block file position");// TODO
+            }
+
+            if (newPosition > size) {
+                throw new FileFileSystemException("Big block file position");// TODO
+            }
+
+            if (newPosition == position) {
+                return;
+            }
+
+            position = newPosition;
+            withinBlockPosition = (int) (position % BLOCK_SIZE);
+
+            int newWithinChainIndex = (int) (position / BLOCK_SIZE);
+            if (startNextBlock()) {
+                newWithinChainIndex--;
+            }
+
+            try {
+                blockIndex = Integer.compareUnsigned(newWithinChainIndex, withinChainIndex) < 0 ?
+                        getNextBlockIndex(blockChainHead, newWithinChainIndex) :
+                        getNextBlockIndex(blockIndex, (newWithinChainIndex - withinChainIndex));
+            } catch (Throwable t) {
+                reset();
+            }
+            withinChainIndex = newWithinChainIndex;
+        }
+
+        private boolean startNextBlock() {
+            return position != 0L && withinBlockPosition == 0;
         }
 
         public int read(ByteBuffer destination) throws IOException, IllegalArgumentException {
