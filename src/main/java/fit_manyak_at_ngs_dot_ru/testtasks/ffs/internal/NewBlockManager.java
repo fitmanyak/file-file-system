@@ -485,8 +485,18 @@ public class NewBlockManager implements Closeable {
 
         checkBlockFileSize(size);
 
-        // TODO
+        if (!skipCheckBlockChainHead) {
+            checkBlockChainHead((size == 0L), blockChainHead, "Bad block file block chain head");// TODO
+        }
 
         return new BlockFile(size, blockChainHead);
+    }
+
+    private static void checkBlockChainHead(boolean isEmpty, int blockChainHead, String errorMessage)
+            throws FileFileSystemException {
+
+        if ((isEmpty && blockChainHead != NULL_BLOCK_INDEX) || (!isEmpty && blockChainHead == NULL_BLOCK_INDEX)) {
+            throw new FileFileSystemException(errorMessage);
+        }
     }
 }
