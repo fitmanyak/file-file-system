@@ -21,43 +21,41 @@ public class NewBlockManager {
         public void resize(int newBlockChainLength) throws IOException;
     }
 
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    private interface IBlockFileWithinBlockIOOperationProcessor {
+        public void process(int blockIndex, int withinBlockPosition, ByteBuffer buffer) throws IOException;
+    }
+
     public class BlockFile {
         private long size;
         private int blockChainLength;
         private int blockChainHead;
 
         private long position;
-        private int inBlockPosition;
-        private int blockIndex;
-        private int inChainIndex;
+        private int withinBlockPosition;
 
-        private final ByteBuffer buffer;
-        private boolean bufferValid;
+        private int blockIndex;
+        private int withinChainIndex;
+
+        private BlockFile() {
+            this(0L, NULL_BLOCK_INDEX);
+        }
 
         private BlockFile(long size, int blockChainHead) {
             this.size = size;
             this.blockChainLength = getRequiredBlockCount(size);
             this.blockChainHead = blockChainHead;
 
-            resetPositionAndBlockIndex();
-
-            this.buffer = ByteBuffer.allocate(BLOCK_SIZE);
-            this.bufferValid = false;
+            reset();
         }
 
-        private void resetPositionAndBlockIndex() {
-            resetPosition();
-            resetBlockIndex();
-        }
-
-        private void resetPosition() {
+        private void reset() {
             position = 0L;
-            inBlockPosition = 0;
-        }
+            withinBlockPosition = 0;
 
-        private void resetBlockIndex() {
             blockIndex = blockChainHead;
-            inChainIndex = 0;
+            withinChainIndex = 0;
         }
 
         public long getSize() {
@@ -65,9 +63,7 @@ public class NewBlockManager {
         }
 
         public void setSize(long newSize) throws IOException, IllegalArgumentException {
-            if (newSize < 0) {
-                throw new IllegalArgumentException("Bad size");// TODO
-            }
+            checkBlockFileSize(newSize);
 
             if (newSize > size) {
                 increaseSize(newSize);
@@ -101,7 +97,7 @@ public class NewBlockManager {
         }
 
         private int getRemainingLength() {
-            return blockChainLength - inChainIndex;
+            return blockChainLength - withinChainIndex;
         }
 
         private void decreaseSize(long newSize) throws IOException {
@@ -109,21 +105,22 @@ public class NewBlockManager {
 
             if (size == 0L) {
                 reset();
-            }
-            else if (position > size) {
+            } else if (position > size) {
                 position = size;
-                inBlockPosition = (int) (position % BLOCK_SIZE);
-                invalidateBuffer();
+                withinBlockPosition = (int) (position % BLOCK_SIZE);
 
-                if (Integer.compareUnsigned(inChainIndex, blockChainLength) >= 0) {
-                    int newInChainIndex = blockChainLength - 1;
+                int newWithinChainIndex = (int) (position / BLOCK_SIZE);
+                if (startNextBlock()) {
+                    newWithinChainIndex--;
+                }
+
+                if (withinChainIndex != newWithinChainIndex) {
                     try {
-                        blockIndex = getNextBlockIndex(blockChainHead, newInChainIndex);
+                        blockIndex = getNextBlockIndex(blockChainHead, newWithinChainIndex);
+                    } catch (Throwable t) {
+                        reset();
                     }
-                    catch (Throwable t) {
-                        resetPositionAndBlockIndex();
-                    }
-                    inChainIndex = newInChainIndex;
+                    withinChainIndex = newWithinChainIndex;
                 }
             }
         }
@@ -131,8 +128,9 @@ public class NewBlockManager {
         private void resizeWithDecrease(int newBlockChainLength) throws IOException {
             int releasedBlockCount = blockChainLength - newBlockChainLength;
             if (releasedBlockCount != 0) {
-                if (Integer.compareUnsigned(inChainIndex, newBlockChainLength) < 0) {
-                    free(blockIndex, getRemainingLength(), (newBlockChainLength - inChainIndex), releasedBlockCount);
+                if (Integer.compareUnsigned(withinChainIndex, newBlockChainLength) < 0) {
+                    free(blockIndex, getRemainingLength(), (newBlockChainLength - withinChainIndex),
+                            releasedBlockCount);
                 } else {
                     blockChainHead = free(blockChainHead, blockChainLength, newBlockChainLength, blockIndex,
                             getRemainingLength(), releasedBlockCount);
@@ -140,14 +138,8 @@ public class NewBlockManager {
             }
         }
 
-        private void reset() {
-            resetPositionAndBlockIndex();
-            invalidateBuffer();
-        }
-
-        private void invalidateBuffer() {
-            buffer.clear();
-            bufferValid = false;
+        private boolean startNextBlock() {
+            return position != 0L && withinBlockPosition == 0;
         }
 
         public int getBlockChainHead() {
@@ -159,89 +151,63 @@ public class NewBlockManager {
                 throw new IllegalArgumentException("Read-only buffer");// TODO
             }
 
-            int totalRead = 0;
-            int destinationRemaining = destination.remaining();
-            while (destinationRemaining != 0 && position != size) {
-                readToBuffer();
-
-                int inBlockRemaining = BLOCK_SIZE - inBlockPosition;
-                if (inBlockRemaining > destinationRemaining) {
-                    destination.put(buffer.array(), inBlockPosition, destinationRemaining);
-
-                    position += destinationRemaining;
-                    inBlockPosition += destinationRemaining;
-                    totalRead += destinationRemaining;
-                    destinationRemaining = 0;
-
-                    buffer.position(inBlockPosition);
-                } else {
-                    destination.put(buffer);
-
-                    position += inBlockRemaining;
-                    inBlockPosition = 0;
-                    totalRead += inBlockRemaining;
-                    destinationRemaining -= inBlockRemaining;
-
-                    invalidateBuffer();
-                }
+            try {
+                return processIOOperation(destination, NewBlockManager.this::readWithinBlock);
+            } finally {
+                destination.limit(destination.position());
             }
-
-            return totalRead;
         }
 
-        private void readToBuffer() throws IOException {
-            if (!bufferValid) {
-                boolean blockStart = (inBlockPosition == 0);
+        private int processIOOperation(ByteBuffer buffer,
+                                       IBlockFileWithinBlockIOOperationProcessor withinBlockIOOperationProcessor)
+                throws IOException {
+
+            int totalProcessed = 0;
+            int bufferRemaining = buffer.remaining();
+            while (bufferRemaining != 0 && position != size) {
                 int actualBlockIndex = blockIndex;
-                if (position != 0L && blockStart) {
+                int actualWithinChainIndex = withinChainIndex;
+                if (startNextBlock()) {
                     actualBlockIndex = getNextBlockIndex(actualBlockIndex);
+                    actualWithinChainIndex++;
                 }
 
-                try {
-                    readBlock(actualBlockIndex, buffer);
-                } catch (Throwable t) {
-                    invalidateBuffer();
+                int withinBlockRemaining = BLOCK_SIZE - withinBlockPosition;
+                int toProcess = withinBlockRemaining < bufferRemaining ? withinBlockRemaining : bufferRemaining;
+                buffer.limit(buffer.position() + toProcess);
+                withinBlockIOOperationProcessor.process(actualBlockIndex, withinBlockPosition, buffer);
 
-                    throw t;
+                totalProcessed += toProcess;
+                bufferRemaining -= toProcess;
+
+                position += toProcess;
+
+                if (withinBlockRemaining == toProcess) {
+                    withinBlockPosition = 0;
+                } else {
+                    withinBlockPosition += toProcess;
                 }
+
                 blockIndex = actualBlockIndex;
-                inChainIndex++;
-                bufferValid = true;
-
-                if (!blockStart) {
-                    buffer.position(inBlockPosition);
-                }
+                withinChainIndex = actualWithinChainIndex;
             }
+
+            return totalProcessed;
         }
 
         public int write(ByteBuffer source) throws IOException {
-            int sourceRemaining = source.remaining();
-            if (sourceRemaining == 0) {
-                return 0;
-            }
-
-            long newPosition = position + sourceRemaining;
+            long newPosition = position + source.remaining();
             if (newPosition > size) {
                 increaseSize(newPosition);
             }
 
-            int totalWrite = 0;
-            // TODO
-
-            return totalWrite;
+            int sourceLimit = source.limit();
+            try {
+                return processIOOperation(source, NewBlockManager.this::writeWithinBlock);
+            } finally {
+                source.limit(sourceLimit);
+            }
         }
-    }
-
-    private int getNextBlockIndex(int blockIndex) throws IOException {
-        return getNextBlockIndex(blockIndex, 1);
-    }
-
-    private int getNextBlockIndex(int blockIndex, int moveCount) throws IOException {
-        for (int i = 0; Integer.compareUnsigned(i, moveCount) < 0; i++) {
-            // TODO
-        }
-
-        return blockIndex;
     }
 
     private static int getRequiredBlockCount(long size) {
@@ -250,6 +216,12 @@ public class NewBlockManager {
 
     private static long getRequiredBlockCountLong(long size) {
         return (size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT;
+    }
+
+    private static void checkBlockFileSize(long size) throws IllegalArgumentException {
+        if (size < 0) {
+            throw new IllegalArgumentException("Bad block file size");// TODO
+        }
     }
 
     private int allocate(int requiredBlockCount) throws IOException {
@@ -275,11 +247,48 @@ public class NewBlockManager {
         return delete ? NULL_BLOCK_INDEX : blockChainHead;
     }
 
-    private void readBlock(int blockIndex, ByteBuffer buffer) throws IOException {
+    private int getNextBlockIndex(int blockIndex) throws IOException {
+        return getNextBlockIndex(blockIndex, 1);
+    }
+
+    private int getNextBlockIndex(int blockIndex, int moveCount) throws IOException {
+        for (int i = 0; Integer.compareUnsigned(i, moveCount) < 0; i++) {
+            // TODO
+        }
+
+        return blockIndex;
+    }
+
+    private void readWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer destination) throws IOException {
         // TODO
     }
 
-    public BlockFile createBlockFile(long size, int blockChainHead) {
+    private void writeWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer source) throws IOException {
+        // TODO
+    }
+
+    public BlockFile createBlockFile() {
+        return new BlockFile();
+    }
+
+    public BlockFile createBlockFile(long size) throws IOException {
+        checkBlockFileSize(size);
+
+        BlockFile file = createBlockFile();
+        file.setSize(size);
+
+        return file;
+    }
+
+    public BlockFile openBlockFile(long size, int blockChainHead) throws IOException {
+        return openBlockFile(size, blockChainHead, false);
+    }
+
+    public BlockFile openBlockFile(long size, int blockChainHead, boolean skipCheckBlockChainHead) throws IOException {
+        checkBlockFileSize(size);
+
+        // TODO
+
         return new BlockFile(size, blockChainHead);
     }
 }
