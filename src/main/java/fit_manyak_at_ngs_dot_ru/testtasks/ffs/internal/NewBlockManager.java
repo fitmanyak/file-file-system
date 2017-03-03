@@ -144,12 +144,14 @@ public class NewBlockManager implements Closeable {
         private void resizeWithDecrease(int newBlockChainLength) throws IOException, IllegalArgumentException {
             int releasedBlockCount = blockChainLength - newBlockChainLength;
             if (releasedBlockCount != 0) {
-                if (Integer.compareUnsigned(withinChainIndex, newBlockChainLength) < 0) {
-                    free(blockIndex, getRemainingLength(), (newBlockChainLength - withinChainIndex),
-                            releasedBlockCount);
+                if (newBlockChainLength == 0) {
+                    deallocate(blockChainHead, blockChainLength, blockIndex, getRemainingLength());
+                    blockChainHead = NULL_BLOCK_INDEX;
+                } else if (Integer.compareUnsigned(withinChainIndex, newBlockChainLength) < 0) {
+                    deallocate(blockIndex, (newBlockChainLength - withinChainIndex), releasedBlockCount);
                 } else {
-                    blockChainHead = free(blockChainHead, blockChainLength, newBlockChainLength, blockIndex,
-                            getRemainingLength(), releasedBlockCount);
+                    deallocate(blockChainHead, newBlockChainLength, blockIndex, getRemainingLength(),
+                            releasedBlockCount, (newBlockChainLength == withinChainIndex));
                 }
             }
         }
@@ -286,6 +288,8 @@ public class NewBlockManager implements Closeable {
 
     private final FileChannel channel;
 
+    private final int blockCount;
+
     private int freeBlockCount;
     private int freeBlockChainHead;
     private final ByteBuffer freeBlockData;
@@ -294,10 +298,12 @@ public class NewBlockManager implements Closeable {
 
     private final long blockTableOffset;
 
-    private NewBlockManager(FileChannel channel, int freeBlockCount, int freeBlockChainHead, ByteBuffer nextBlockIndex,
-                            long blockTableOffset) {
+    private NewBlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
+                            ByteBuffer nextBlockIndex, long blockTableOffset) {
 
         this.channel = channel;
+
+        this.blockCount = blockCount;
 
         this.freeBlockCount = freeBlockCount;
         this.freeBlockChainHead = freeBlockChainHead;
@@ -328,7 +334,7 @@ public class NewBlockManager implements Closeable {
     }
 
     private int allocate(int requiredBlockCount) throws IOException, IllegalArgumentException {
-        checkFreeBlocks(requiredBlockCount);
+        checkEnoughFreeBlocks(requiredBlockCount);
 
         int newFreeBlockCount = freeBlockCount - requiredBlockCount;
         int newFreeBlockChainHead = NULL_BLOCK_INDEX;
@@ -349,7 +355,7 @@ public class NewBlockManager implements Closeable {
         return allocatedBlockChainHead;
     }
 
-    private void checkFreeBlocks(int requiredBlockCount) throws FileFileSystemException {
+    private void checkEnoughFreeBlocks(int requiredBlockCount) throws FileFileSystemException {
         if (Integer.compareUnsigned(freeBlockCount, requiredBlockCount) < 0) {
             throw new FileFileSystemException("Not enough free blocks");// TODO
         }
@@ -445,26 +451,70 @@ public class NewBlockManager implements Closeable {
     private void reallocate(int blockIndex, int remainingLength, int additionalBlockCount)
             throws IOException, IllegalArgumentException {
 
-        checkFreeBlocks(additionalBlockCount);
+        checkEnoughFreeBlocks(additionalBlockCount);
 
         int blockChainTail = getBlockChainTail(blockIndex, remainingLength);
         int additionalBlockChainHead = allocate(additionalBlockCount);
         writeNextBlockIndex(blockChainTail, additionalBlockChainHead);
     }
 
-    private void free(int blockIndex, int remainingLength, int newRemainingLength, int releasedBlockCount)
+    private void deallocate(int blockChainHead, int blockChainLength, int blockIndex, int remainingLength)
             throws IOException, IllegalArgumentException {
 
-        // TODO
+        checkReleasedBlockCount(blockChainLength);
+
+        releaseBlockChain(blockChainHead, getBlockChainTail(blockIndex, remainingLength), blockChainLength);
     }
 
-    private int free(int blockChainHead, int blockChainLength, int newBlockChainLength, int blockIndex,
-                     int remainingLength, int releasedBlockCount) throws IOException, IllegalArgumentException {
+    private void checkReleasedBlockCount(int releasedBlockCount) throws FileFileSystemException {
+        if (Integer.compareUnsigned(blockCount, releasedBlockCount) < 0) {
+            throw new FileFileSystemException("Too many released blocks");// TODO
+        }
 
-        boolean delete = (newBlockChainLength == 0);
-        // TODO
+        if (freeBlockCount != blockCount - releasedBlockCount) {
+            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);// TODO
+        }
+    }
 
-        return delete ? NULL_BLOCK_INDEX : blockChainHead;
+    private void releaseBlockChain(int blockChainHead, int blockChainTail, int blockChainLength)
+            throws IOException, IllegalArgumentException {
+
+        writeNextBlockIndex(blockChainTail, freeBlockChainHead);
+        writeFreeBlockData((freeBlockCount + blockChainLength), blockChainHead);
+    }
+
+    private void deallocate(int blockIndex, int newRemainingLength, int releasedBlockCount)
+            throws IOException, IllegalArgumentException {
+
+        checkReleasedBlockCount(releasedBlockCount);
+
+        int newBlockChainTail = getBlockChainTail(blockIndex, newRemainingLength);
+        int releasedBlockChainHead = getNextBlockIndex(newBlockChainTail);
+        int releasedBlockChainTail = getBlockChainTail(releasedBlockChainHead, releasedBlockCount);
+        breakAndReleaseBlockChain(newBlockChainTail, releasedBlockChainHead, releasedBlockChainTail,
+                releasedBlockCount);
+    }
+
+    private void breakAndReleaseBlockChain(int newBlockChainTail, int releasedBlockChainHead,
+                                           int releasedBlockChainTail, int releasedBlockCount)
+            throws IOException, IllegalArgumentException {
+
+        writeNextBlockIndex(newBlockChainTail, NULL_BLOCK_INDEX);
+        releaseBlockChain(releasedBlockChainHead, releasedBlockChainTail, releasedBlockCount);
+    }
+
+    private void deallocate(int blockChainHead, int newBlockChainLength, int blockIndex, int remainingLength,
+                            int releasedBlockCount, boolean isBlockIndexReleasedBlockChainHead)
+            throws IOException, IllegalArgumentException {
+
+        checkReleasedBlockCount(releasedBlockCount);
+
+        int newBlockChainTail = getBlockChainTail(blockChainHead, newBlockChainLength);
+        int releasedBlockChainHead =
+                isBlockIndexReleasedBlockChainHead ? blockIndex : getNextBlockIndex(newBlockChainTail);
+        int releasedBlockChainTail = getBlockChainTail(blockIndex, remainingLength);
+        breakAndReleaseBlockChain(newBlockChainTail, releasedBlockChainHead, releasedBlockChainTail,
+                releasedBlockCount);
     }
 
     private void readWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer destination)
