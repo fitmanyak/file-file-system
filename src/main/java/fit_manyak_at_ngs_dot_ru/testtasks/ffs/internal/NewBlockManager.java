@@ -9,6 +9,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.function.Consumer;
 
 /**
@@ -318,7 +319,7 @@ public class NewBlockManager implements Closeable {
     private final long blockTableOffset;
 
     private NewBlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
-                            ByteBuffer nextBlockIndex, long blockTableOffset) {
+                            ByteBuffer nextBlockIndex) {
 
         this.channel = channel;
 
@@ -330,7 +331,7 @@ public class NewBlockManager implements Closeable {
 
         this.nextBlockIndex = nextBlockIndex;
 
-        this.blockTableOffset = blockTableOffset;
+        this.blockTableOffset = getNextBlockIndexPosition(blockCount);
     }
 
     @Override
@@ -408,7 +409,13 @@ public class NewBlockManager implements Closeable {
     private void readAndFlipBuffer(long position, ByteBuffer destination, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        read(position, destination, errorMessage);
+        readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
+    }
+
+    private static void readAndFlipBuffer(ByteBuffer destination, INoReturnValueIOOperation readOperation)
+            throws IOException, IllegalArgumentException {
+
+        readOperation.perform(destination);
 
         destination.flip();
     }
@@ -635,6 +642,10 @@ public class NewBlockManager implements Closeable {
         }
     }
 
+    private static long getTotalSize(int blockCount) {
+        return getTotalSize(Integer.toUnsignedLong(blockCount));
+    }
+
     private static long getTotalSize(long blockCountLong) {
         return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
@@ -648,5 +659,66 @@ public class NewBlockManager implements Closeable {
     private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel) throws IOException {
         buffer.putInt(index);
         flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
+    }
+
+    public static NewBlockManager mount(Path path) throws IOException, IllegalArgumentException {
+        return Utilities.createWithCloseableArgument(
+                () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
+                NewBlockManager::mount);
+    }
+
+    private static NewBlockManager mount(FileChannel channel) throws IOException {
+        ByteBuffer fixedSizeData =
+                createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
+        if (fixedSizeData.getShort() != SIGNATURE) {
+            throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
+        }
+
+        if (fixedSizeData.get() != BLOCK_SIZE_RATIO) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_SIZE_RATIO_ERROR);
+        }
+
+        if (fixedSizeData.get() != BLOCK_INDEX_SIZE_EXPONENT) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_INDEX_SIZE_EXPONENT_ERROR);
+        }
+
+        if (fixedSizeData.get() != CONTENT_SIZE_SIZE_EXPONENT) {
+            throw new FileFileSystemException(Messages.BAD_CONTENT_SIZE_SIZE_EXPONENT_ERROR);
+        }
+
+        int blockCount = fixedSizeData.getInt();
+        if (Integer.compareUnsigned(blockCount, MINIMAL_BLOCK_COUNT) < 0) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_COUNT_ERROR);
+        }
+
+        int freeBlockCount = fixedSizeData.getInt();
+        if (Integer.compareUnsigned(blockCount, freeBlockCount) < 0) {
+            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
+        }
+
+        int freeBlockChainHead = fixedSizeData.getInt();
+        checkBlockChainHead((freeBlockCount == 0), freeBlockChainHead, Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
+
+        if (channel.size() != getTotalSize(blockCount)) {
+            throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
+        }
+
+        ByteBuffer nextBlockIndex =
+                createReadAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+        if (nextBlockIndex.getInt() != NULL_BLOCK_INDEX) {
+            throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
+        }
+        nextBlockIndex.clear();
+
+        return new NewBlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, nextBlockIndex);
+    }
+
+    private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, String errorMessage)
+            throws IOException, IllegalArgumentException {
+
+        ByteBuffer destination = ByteBuffer.allocateDirect(size);
+        readAndFlipBuffer(destination, dst -> performIOOperation(dst, channel::read, errorMessage));
+
+        return destination;
     }
 }
