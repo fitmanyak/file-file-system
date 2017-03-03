@@ -22,12 +22,12 @@ public class File implements IFile {
     }
 
     @Override
-    public int read(ByteBuffer buffer) throws IOException {
+    public int read(ByteBuffer buffer) throws IOException, IllegalArgumentException {
         return 0;
     }
 
     @Override
-    public int write(ByteBuffer buffer) throws IOException {
+    public int write(ByteBuffer buffer) throws IOException, IllegalArgumentException {
         return 0;
     }
 }

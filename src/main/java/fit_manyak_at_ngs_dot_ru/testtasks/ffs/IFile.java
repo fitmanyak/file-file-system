@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface IFile extends Closeable {
-    public int read(ByteBuffer buffer) throws IOException;
+    public int read(ByteBuffer buffer) throws IOException, IllegalArgumentException;
 
-    public int write(ByteBuffer buffer) throws IOException;
+    public int write(ByteBuffer buffer) throws IOException, IllegalArgumentException;
 }

@@ -23,13 +23,13 @@ public class NewBlockManager implements Closeable {
 
     private static final int BLOCK_SIZE_RATIO_SIZE = 1;
     private static final byte BLOCK_SIZE_RATIO = 0;
-    private static final int BLOCK_SIZE = 512;
+    public static final int BLOCK_SIZE = 512;
     private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
     private static final int BLOCK_SIZE_EXPONENT = 9;
 
     private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
     private static final byte BLOCK_INDEX_SIZE_EXPONENT = 0;
-    private static final int BLOCK_INDEX_SIZE = 4;
+    public static final int BLOCK_INDEX_SIZE = 4;
 
     private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
 
@@ -39,6 +39,7 @@ public class NewBlockManager implements Closeable {
 
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
     private static final byte CONTENT_SIZE_SIZE_EXPONENT = 0;
+    public static final int CONTENT_SIZE_SIZE = 8;
 
     private static final int SIGNATURE_AND_GEOMETRY_SIZE =
             SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
@@ -49,8 +50,9 @@ public class NewBlockManager implements Closeable {
 
     private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
 
-    private static final int NULL_BLOCK_INDEX = 0;
+    public static final int NULL_BLOCK_INDEX = 0;
 
+    private static final int ROOT_DIRECTORY_ENTRY_BLOCK_INDEX = 0;
     private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
 
     private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
@@ -295,7 +297,7 @@ public class NewBlockManager implements Closeable {
             }
         }
 
-        public int write(long newPosition, ByteBuffer source) throws IOException {
+        public int write(long newPosition, ByteBuffer source) throws IOException, IllegalArgumentException {
             return performIOOperationAtPosition(newPosition, source, this::write);
         }
     }
@@ -656,7 +658,9 @@ public class NewBlockManager implements Closeable {
         flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
     }
 
-    private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel) throws IOException {
+    private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel)
+            throws IOException, IllegalArgumentException {
+
         buffer.putInt(index);
         flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
     }

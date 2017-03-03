@@ -12,18 +12,18 @@ public class Utilities {
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     public interface ICreator<T> {
-        public T create() throws IOException;
+        public T create() throws IOException, IllegalArgumentException;
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     public interface ICreatorWithArgument<R, T> {
-        public R create(T argument) throws IOException;
+        public R create(T argument) throws IOException, IllegalArgumentException;
     }
 
     public static <R, T extends Closeable> R createWithCloseableArgument(ICreator<T> argumentCreator,
                                                                          ICreatorWithArgument<R, T> creator)
-            throws IOException {
+            throws IOException, IllegalArgumentException {
 
         T argument = null;
         try {

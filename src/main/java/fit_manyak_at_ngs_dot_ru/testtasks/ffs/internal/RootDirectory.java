@@ -14,17 +14,17 @@ import java.nio.ByteBuffer;
 public class RootDirectory implements IDirectory {
     private final DirectoryEntry entry;
 
-    private final BlockManager blockManager;
+    private final NewBlockManager blockManager;
 
-    private RootDirectory(DirectoryEntry entry, BlockManager blockManager) {
+    private RootDirectory(DirectoryEntry entry, NewBlockManager blockManager) {
         this.entry = entry;
 
         this.blockManager = blockManager;
     }
 
     @Override
-    public IFile createFile(String name) throws IOException {
-        long contentSize = entry.getContentSize();
+    public IFile createFile(String name) throws IOException, IllegalArgumentException {
+        /*long contentSize = entry.getContentSize();
         long newContentSize = contentSize + BlockManager.BLOCK_INDEX_SIZE;
         int contentBlockChainHead = entry.getContentBlockChainHead();
         if (contentSize == 0) {
@@ -41,17 +41,22 @@ public class RootDirectory implements IDirectory {
         fileEntryBlockChainHead.putInt(fileEntry.getBlockChainHead());
         blockManager.writeDataInBlock(contentBlockChainHead, contentSize, fileEntryBlockChainHead);
 
-        return new File(fileEntry);
-    }
-
-    @Override
-    public IFile openFile(String name) throws IOException {
+        return new File(fileEntry);*/
         return null;
     }
 
-    public static RootDirectory read(BlockManager blockManager) throws IOException {
-        return new RootDirectory(DirectoryEntry
+    @Override
+    public IFile openFile(String name) throws IOException, IllegalArgumentException {
+        return null;
+    }
+
+    public static void format(ByteBuffer rootDirectoryEntry) {
+        DirectoryEntry.formatRootDirectoryEntry(rootDirectoryEntry);// TODO
+    }
+
+    public static RootDirectory open(NewBlockManager blockManager) throws IOException, IllegalArgumentException {
+        return null/*new RootDirectory(DirectoryEntry
                 .read(blockManager.readRootDirectoryEntry(), BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX,
-                        blockManager), blockManager);
+                        blockManager), blockManager)*/;
     }
 }

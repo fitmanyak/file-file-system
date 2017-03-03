@@ -9,6 +9,6 @@ import java.io.IOException;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface IDirectory {
-    public IFile createFile(String name) throws IOException;
-    public IFile openFile(String name) throws IOException;
+    public IFile createFile(String name) throws IOException, IllegalArgumentException;
+    public IFile openFile(String name) throws IOException, IllegalArgumentException;
 }

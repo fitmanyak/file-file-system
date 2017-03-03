@@ -1,11 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
-
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -17,14 +12,14 @@ public class DirectoryEntry {
     private static final int FILE_FLAGS = 0;
     private static final int DIRECTORY_FLAGS = 1;
 
-    private static final int CONTENT_DATA_SIZE = BlockManager.CONTENT_SIZE_SIZE + BlockManager.BLOCK_INDEX_SIZE;
+    private static final int CONTENT_DATA_SIZE = NewBlockManager.CONTENT_SIZE_SIZE + NewBlockManager.BLOCK_INDEX_SIZE;
 
     private static final int NAME_SIZE = 2;
     private static final int NAME_MAXIMAL_SIZE = (1 << (8 * NAME_SIZE)) - 1;
 
     private static final int FIXED_SIZE_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE + NAME_SIZE;
 
-    private static final int FIRST_BLOCK_NAME_AREA_SIZE = BlockManager.BLOCK_SIZE - FIXED_SIZE_DATA_SIZE;
+    private static final int FIRST_BLOCK_NAME_AREA_SIZE = NewBlockManager.BLOCK_SIZE - FIXED_SIZE_DATA_SIZE;
 
     private static final long INITIAL_CONTENT_SIZE = 0L;
 
@@ -37,10 +32,10 @@ public class DirectoryEntry {
     private int contentBlockChainHead;
     private final String name;
 
-    private final BlockManager blockManager;
+    private final NewBlockManager blockManager;
 
     private DirectoryEntry(int blockChainHead, boolean isDirectory, long contentSize, int contentBlockChainHead,
-                           String name, BlockManager blockManager) {
+                           String name, NewBlockManager blockManager) {
 
         this.blockChainHead = blockChainHead;
 
@@ -60,19 +55,19 @@ public class DirectoryEntry {
         return contentSize;
     }
 
-    public void updateContentSize(long newContentSize) throws IOException {
+    /*public void updateContentSize(long newContentSize) throws IOException, IllegalArgumentException {
         ByteBuffer contentSizeBuffer = ByteBuffer.allocateDirect(BlockManager.CONTENT_SIZE_SIZE);
         contentSizeBuffer.putLong(newContentSize);
         blockManager.writeDataInBlock(blockChainHead, FLAGS_SIZE, contentSizeBuffer);
 
         contentSize = newContentSize;
-    }
+    }*/
 
     public int getContentBlockChainHead() {
         return contentBlockChainHead;
     }
 
-    public void updateContentData(long newContentSize, int newContentBlockChainHead) throws IOException {
+    /*public void updateContentData(long newContentSize, int newContentBlockChainHead) throws IOException, IllegalArgumentException {
         ByteBuffer contentData = ByteBuffer.allocateDirect(CONTENT_DATA_SIZE);
         contentData.putLong(newContentSize);
         contentData.putInt(newContentBlockChainHead);
@@ -80,16 +75,16 @@ public class DirectoryEntry {
 
         contentSize = newContentSize;
         contentBlockChainHead = newContentBlockChainHead;
-    }
+    }*/
 
     public static void formatRootDirectoryEntry(ByteBuffer rootDirectoryEntry) {
         rootDirectoryEntry.putInt(DIRECTORY_FLAGS);
         rootDirectoryEntry.putLong(INITIAL_CONTENT_SIZE);
-        rootDirectoryEntry.putInt(BlockManager.NULL_BLOCK_INDEX);
+        rootDirectoryEntry.putInt(NewBlockManager.NULL_BLOCK_INDEX);
         rootDirectoryEntry.putShort(ROOT_DIRECTORY_NAME_SIZE);
     }
 
-    public static void checkRootDirectoryEntry(ByteBuffer rootDirectoryEntry) throws FileFileSystemException {
+    /*public static void checkRootDirectoryEntry(ByteBuffer rootDirectoryEntry) throws FileFileSystemException {
         if (rootDirectoryEntry.getInt() != DIRECTORY_FLAGS) {
             throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR);
         }
@@ -104,7 +99,7 @@ public class DirectoryEntry {
         }
     }
 
-    public static DirectoryEntry read(ByteBuffer block, int blockChainHead, BlockManager blockManager)
+    public static DirectoryEntry open(ByteBuffer block, int blockChainHead, BlockManager blockManager)
             throws FileFileSystemException {
 
         int flags = block.getInt();
@@ -130,12 +125,12 @@ public class DirectoryEntry {
                 blockManager);
     }
 
-    public static DirectoryEntry createFile(String name, BlockManager blockManager) throws IOException {
+    public static DirectoryEntry createFile(String name, BlockManager blockManager) throws IOException, IllegalArgumentException {
         return create(false, name, blockManager);
     }
 
     private static DirectoryEntry create(boolean isDirectory, String name, BlockManager blockManager)
-            throws IOException {
+            throws IOException, IllegalArgumentException {
 
         int blockChainHead = blockManager.allocBlock();
 
@@ -152,5 +147,5 @@ public class DirectoryEntry {
 
         return new DirectoryEntry(blockChainHead, isDirectory, INITIAL_CONTENT_SIZE, BlockManager.NULL_BLOCK_INDEX,
                 name, blockManager);
-    }
+    }*/
 }
