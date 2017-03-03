@@ -328,35 +328,37 @@ public class NewBlockManager implements Closeable {
     }
 
     private int allocate(int requiredBlockCount) throws IOException, IllegalArgumentException {
-        if (Integer.compareUnsigned(freeBlockCount, requiredBlockCount) < 0) {
-            throw new FileFileSystemException("Not enough free blocks");// TODO
-        }
+        checkFreeBlocks(requiredBlockCount);
 
         int newFreeBlockCount = freeBlockCount - requiredBlockCount;
         int newFreeBlockChainHead = NULL_BLOCK_INDEX;
         int allocatedBlockChainTail = freeBlockChainHead;
         boolean hasMoreFreeBlocks = newFreeBlockCount != 0;
         if (hasMoreFreeBlocks) {
-            allocatedBlockChainTail = getNextBlockIndex(freeBlockChainHead, (requiredBlockCount - 1));
+            allocatedBlockChainTail = getBlockChainTail(freeBlockChainHead, requiredBlockCount);
             newFreeBlockChainHead = getNextBlockIndex(allocatedBlockChainTail);
         }
 
-        freeBlockData.putInt(newFreeBlockCount);
-        freeBlockData.putInt(newFreeBlockChainHead);
-        flipBufferAndWrite(FREE_BLOCK_DATA_POSITION, freeBlockData, "Write free block data error");// TODO
-
         int allocatedBlockChainHead = freeBlockChainHead;
-
-        freeBlockCount = newFreeBlockCount;
-        freeBlockChainHead = newFreeBlockChainHead;
+        writeFreeBlockData(newFreeBlockCount, newFreeBlockChainHead);
 
         if (hasMoreFreeBlocks) {
-            nextBlockIndex.putInt(NULL_BLOCK_INDEX);
-            flipBufferAndWrite(getNextBlockIndexPosition(allocatedBlockChainTail), nextBlockIndex,
-                    "Write next block index error");// TODO
+            writeNextBlockIndex(allocatedBlockChainTail, NULL_BLOCK_INDEX);
         }
 
         return allocatedBlockChainHead;
+    }
+
+    private void checkFreeBlocks(int requiredBlockCount) throws FileFileSystemException {
+        if (Integer.compareUnsigned(freeBlockCount, requiredBlockCount) < 0) {
+            throw new FileFileSystemException("Not enough free blocks");// TODO
+        }
+    }
+
+    private int getBlockChainTail(int blockChainHead, int blockChainLength)
+            throws IOException, IllegalArgumentException {
+
+        return getNextBlockIndex(blockChainHead, (blockChainLength - 1));
     }
 
     private int getNextBlockIndex(int blockIndex) throws IOException, IllegalArgumentException {
@@ -405,6 +407,17 @@ public class NewBlockManager implements Closeable {
         return FIXED_SIZE_DATA_SIZE + Integer.toUnsignedLong(blockIndex) * BLOCK_INDEX_SIZE;
     }
 
+    private void writeFreeBlockData(int newFreeBlockCount, int newFreeBlockChainHead)
+            throws IOException, IllegalArgumentException {
+
+        freeBlockData.putInt(newFreeBlockCount);
+        freeBlockData.putInt(newFreeBlockChainHead);
+        flipBufferAndWrite(FREE_BLOCK_DATA_POSITION, freeBlockData, "Write free block data error");// TODO
+
+        freeBlockCount = newFreeBlockCount;
+        freeBlockChainHead = newFreeBlockChainHead;
+    }
+
     private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage)
             throws IOException, IllegalArgumentException {
 
@@ -421,16 +434,28 @@ public class NewBlockManager implements Closeable {
         performIOOperation(source, src -> channel.write(src, position), errorMessage);
     }
 
+    private void writeNextBlockIndex(int blockIndex, int newNextBlockIndex)
+            throws IOException, IllegalArgumentException {
+
+        nextBlockIndex.putInt(newNextBlockIndex);
+        flipBufferAndWrite(getNextBlockIndexPosition(blockIndex), nextBlockIndex,
+                "Write next block index error");// TODO
+    }
+
     private void reallocate(int blockIndex, int remainingLength, int additionalBlockCount)
             throws IOException, IllegalArgumentException {
 
-        // TODO
+        checkFreeBlocks(additionalBlockCount);
+
+        int blockChainTail = getBlockChainTail(blockIndex, remainingLength);
+        int additionalBlockChainHead = allocate(additionalBlockCount);
+        writeNextBlockIndex(blockChainTail, additionalBlockChainHead);
     }
 
     private void free(int blockIndex, int remainingLength, int newRemainingLength, int releasedBlockCount)
             throws IOException, IllegalArgumentException {
 
-        free(blockIndex, remainingLength, newRemainingLength, blockIndex, remainingLength, releasedBlockCount);
+        // TODO
     }
 
     private int free(int blockChainHead, int blockChainLength, int newBlockChainLength, int blockIndex,
