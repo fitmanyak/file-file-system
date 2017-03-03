@@ -1,6 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.NewBlockManager;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.BlockManager;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.RootDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.Utilities;
 
@@ -16,9 +16,9 @@ import java.nio.file.Path;
 public class FileFileSystem implements Closeable {
     private final RootDirectory rootDirectory;
 
-    private final NewBlockManager blockManager;
+    private final BlockManager blockManager;
 
-    private FileFileSystem(RootDirectory rootDirectory, NewBlockManager blockManager) {
+    private FileFileSystem(RootDirectory rootDirectory, BlockManager blockManager) {
         this.rootDirectory = rootDirectory;
 
         this.blockManager = blockManager;
@@ -34,14 +34,14 @@ public class FileFileSystem implements Closeable {
     }
 
     public static void format(Path path, long size) throws IOException, IllegalArgumentException {
-        NewBlockManager.format(path, size, RootDirectory::format);
+        BlockManager.format(path, size, RootDirectory::format);
     }
 
     public static FileFileSystem mount(Path path) throws IOException, IllegalArgumentException {
-        return Utilities.createWithCloseableArgument(() -> NewBlockManager.mount(path), FileFileSystem::mount);
+        return Utilities.createWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
     }
 
-    private static FileFileSystem mount(NewBlockManager blockManager) throws IOException, IllegalArgumentException {
+    private static FileFileSystem mount(BlockManager blockManager) throws IOException, IllegalArgumentException {
         return new FileFileSystem(RootDirectory.open(blockManager), blockManager);
     }
 }

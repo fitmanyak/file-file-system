@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  *         Created on 26.02.2017.
  */
 
-public class NewBlockManager implements Closeable {
+public class BlockManager implements Closeable {
     private static final int SIGNATURE_SIZE = 2;
     private static final short SIGNATURE = (short) 0xFFF5;
 
@@ -229,7 +229,7 @@ public class NewBlockManager implements Closeable {
             }
 
             try {
-                return performIOOperation(destination, NewBlockManager.this::readWithinBlock);
+                return performIOOperation(destination, BlockManager.this::readWithinBlock);
             } finally {
                 destination.limit(destination.position());
             }
@@ -291,7 +291,7 @@ public class NewBlockManager implements Closeable {
 
             int sourceLimit = source.limit();
             try {
-                return performIOOperation(source, NewBlockManager.this::writeWithinBlock);
+                return performIOOperation(source, BlockManager.this::writeWithinBlock);
             } finally {
                 source.limit(sourceLimit);
             }
@@ -320,8 +320,8 @@ public class NewBlockManager implements Closeable {
 
     private final long blockTableOffset;
 
-    private NewBlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
-                            ByteBuffer nextBlockIndex) {
+    private BlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
+                         ByteBuffer nextBlockIndex) {
 
         this.channel = channel;
 
@@ -665,13 +665,13 @@ public class NewBlockManager implements Closeable {
         flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
     }
 
-    public static NewBlockManager mount(Path path) throws IOException, IllegalArgumentException {
+    public static BlockManager mount(Path path) throws IOException, IllegalArgumentException {
         return Utilities.createWithCloseableArgument(
                 () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
-                NewBlockManager::mount);
+                BlockManager::mount);
     }
 
-    private static NewBlockManager mount(FileChannel channel) throws IOException {
+    private static BlockManager mount(FileChannel channel) throws IOException {
         ByteBuffer fixedSizeData =
                 createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
         if (fixedSizeData.getShort() != SIGNATURE) {
@@ -714,7 +714,7 @@ public class NewBlockManager implements Closeable {
         }
         nextBlockIndex.clear();
 
-        return new NewBlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, nextBlockIndex);
+        return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, nextBlockIndex);
     }
 
     private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, String errorMessage)

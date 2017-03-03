@@ -12,14 +12,14 @@ public class DirectoryEntry {
     private static final int FILE_FLAGS = 0;
     private static final int DIRECTORY_FLAGS = 1;
 
-    private static final int CONTENT_DATA_SIZE = NewBlockManager.CONTENT_SIZE_SIZE + NewBlockManager.BLOCK_INDEX_SIZE;
+    private static final int CONTENT_DATA_SIZE = BlockManager.CONTENT_SIZE_SIZE + BlockManager.BLOCK_INDEX_SIZE;
 
     private static final int NAME_SIZE = 2;
     private static final int NAME_MAXIMAL_SIZE = (1 << (8 * NAME_SIZE)) - 1;
 
     private static final int FIXED_SIZE_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE + NAME_SIZE;
 
-    private static final int FIRST_BLOCK_NAME_AREA_SIZE = NewBlockManager.BLOCK_SIZE - FIXED_SIZE_DATA_SIZE;
+    private static final int FIRST_BLOCK_NAME_AREA_SIZE = BlockManager.BLOCK_SIZE - FIXED_SIZE_DATA_SIZE;
 
     private static final long INITIAL_CONTENT_SIZE = 0L;
 
@@ -32,10 +32,10 @@ public class DirectoryEntry {
     private int contentBlockChainHead;
     private final String name;
 
-    private final NewBlockManager blockManager;
+    private final BlockManager blockManager;
 
     private DirectoryEntry(int blockChainHead, boolean isDirectory, long contentSize, int contentBlockChainHead,
-                           String name, NewBlockManager blockManager) {
+                           String name, BlockManager blockManager) {
 
         this.blockChainHead = blockChainHead;
 
@@ -80,7 +80,7 @@ public class DirectoryEntry {
     public static void formatRootDirectoryEntry(ByteBuffer rootDirectoryEntry) {
         rootDirectoryEntry.putInt(DIRECTORY_FLAGS);
         rootDirectoryEntry.putLong(INITIAL_CONTENT_SIZE);
-        rootDirectoryEntry.putInt(NewBlockManager.NULL_BLOCK_INDEX);
+        rootDirectoryEntry.putInt(BlockManager.NULL_BLOCK_INDEX);
         rootDirectoryEntry.putShort(ROOT_DIRECTORY_NAME_SIZE);
     }
 

@@ -14,9 +14,9 @@ import java.nio.ByteBuffer;
 public class RootDirectory implements IDirectory {
     private final DirectoryEntry entry;
 
-    private final NewBlockManager blockManager;
+    private final BlockManager blockManager;
 
-    private RootDirectory(DirectoryEntry entry, NewBlockManager blockManager) {
+    private RootDirectory(DirectoryEntry entry, BlockManager blockManager) {
         this.entry = entry;
 
         this.blockManager = blockManager;
@@ -54,7 +54,7 @@ public class RootDirectory implements IDirectory {
         DirectoryEntry.formatRootDirectoryEntry(rootDirectoryEntry);// TODO
     }
 
-    public static RootDirectory open(NewBlockManager blockManager) throws IOException, IllegalArgumentException {
+    public static RootDirectory open(BlockManager blockManager) throws IOException, IllegalArgumentException {
         return null/*new RootDirectory(DirectoryEntry
                 .read(blockManager.readRootDirectoryEntry(), BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX,
                         blockManager), blockManager)*/;
