@@ -5,8 +5,11 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.util.function.Consumer;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -15,16 +18,26 @@ import java.nio.channels.FileChannel;
 
 public class NewBlockManager implements Closeable {
     private static final int SIGNATURE_SIZE = 2;
+    private static final short SIGNATURE = (short) 0xFFF5;
 
     private static final int BLOCK_SIZE_RATIO_SIZE = 1;
+    private static final byte BLOCK_SIZE_RATIO = 0;
     private static final int BLOCK_SIZE = 512;
     private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
     private static final int BLOCK_SIZE_EXPONENT = 9;
 
     private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
+    private static final byte BLOCK_INDEX_SIZE_EXPONENT = 0;
     private static final int BLOCK_INDEX_SIZE = 4;
 
+    private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
+
+    private static final int MINIMAL_BLOCK_COUNT = 4;
+    private static final long MINIMAL_SIZE = MINIMAL_BLOCK_COUNT * BLOCK_SIZE;
+    private static final long MAXIMAL_SIZE = ((1L << (8L * BLOCK_INDEX_SIZE)) - 1L) * BLOCK_SIZE;
+
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
+    private static final byte CONTENT_SIZE_SIZE_EXPONENT = 0;
 
     private static final int SIGNATURE_AND_GEOMETRY_SIZE =
             SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
@@ -36,6 +49,10 @@ public class NewBlockManager implements Closeable {
     private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
 
     private static final int NULL_BLOCK_INDEX = 0;
+
+    private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
+
+    private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
@@ -278,12 +295,10 @@ public class NewBlockManager implements Closeable {
         }
     }
 
-
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    private interface IPositionedIOOperation {
-        public void perform(long position, ByteBuffer buffer, String errorMessage)
-                throws IOException, IllegalArgumentException;
+    private interface INoReturnValueIOOperation {
+        public void perform(ByteBuffer buffer) throws IOException, IllegalArgumentException;
     }
 
     private final FileChannel channel;
@@ -427,9 +442,15 @@ public class NewBlockManager implements Closeable {
     private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage)
             throws IOException, IllegalArgumentException {
 
+        flipBufferAndWrite(source, src -> write(position, src, errorMessage));
+    }
+
+    private static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation)
+            throws IOException, IllegalArgumentException {
+
         source.flip();
 
-        write(position, source, errorMessage);
+        writeOperation.perform(source);
 
         source.clear();
     }
@@ -520,22 +541,17 @@ public class NewBlockManager implements Closeable {
     private void readWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer destination)
             throws IOException, IllegalArgumentException {
 
-        performIOOperationWithinBlock(blockIndex, withinBlockPosition, destination, Messages.BLOCK_READ_ERROR,
-                this::read);
+        read(getAbsolutePosition(blockIndex, withinBlockPosition), destination, Messages.BLOCK_READ_ERROR);
     }
 
-    private void performIOOperationWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer buffer,
-                                               String errorMessage, IPositionedIOOperation operation)
-            throws IOException, IllegalArgumentException {
-
-        operation.perform((blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE + withinBlockPosition),
-                buffer, errorMessage);
+    private long getAbsolutePosition(int blockIndex, int withinBlockPosition) {
+        return blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE + withinBlockPosition;
     }
 
     private void writeWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer source)
             throws IOException, IllegalArgumentException {
 
-        performIOOperationWithinBlock(blockIndex, withinBlockPosition, source, "Block write error", this::write);// TODO
+        write(getAbsolutePosition(blockIndex, withinBlockPosition), source, "Block write error");// TODO
     }
 
     public BlockFile createBlockFile() {
@@ -573,5 +589,60 @@ public class NewBlockManager implements Closeable {
         if ((isEmpty && blockChainHead != NULL_BLOCK_INDEX) || (!isEmpty && blockChainHead == NULL_BLOCK_INDEX)) {
             throw new FileFileSystemException(errorMessage);
         }
+    }
+
+    public static void format(Path path, long size, Consumer<ByteBuffer> rootDirectoryEntryFormatter)
+            throws IOException, IllegalArgumentException {
+
+        if (size < MINIMAL_SIZE || size > MAXIMAL_SIZE) {
+            throw new IllegalArgumentException(
+                    String.format(Messages.BAD_SIZE_FOR_FORMAT_ERROR, size, MINIMAL_SIZE, MAXIMAL_SIZE));
+        }
+
+        try (RandomAccessFile file = new RandomAccessFile(path.toString(), "rw")) {
+            long blockCountLong = getRequiredBlockCountLong(size);
+            file.setLength(getTotalSize(blockCountLong));
+
+            try (FileChannel channel = file.getChannel()) {
+                int blockCount = (int) blockCountLong;
+                ByteBuffer fixedSizeData = ByteBuffer.allocateDirect(FIXED_SIZE_DATA_SIZE);
+                fixedSizeData.putShort(SIGNATURE);
+                fixedSizeData.put(BLOCK_SIZE_RATIO);
+                fixedSizeData.put(BLOCK_INDEX_SIZE_EXPONENT);
+                fixedSizeData.put(CONTENT_SIZE_SIZE_EXPONENT);
+                fixedSizeData.putInt(blockCount);
+                fixedSizeData.putInt(blockCount - ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
+                fixedSizeData.putInt(ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
+                flipBufferAndWrite(fixedSizeData, channel, "Fixed-size data write error");// TODO
+
+                ByteBuffer nextBlockIndex = ByteBuffer.allocateDirect(BLOCK_INDEX_SIZE);
+                writeNextBlockIndex(NULL_BLOCK_INDEX, nextBlockIndex, channel);
+
+                for (int i = FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX; i < blockCount; i++) {
+                    writeNextBlockIndex(i, nextBlockIndex, channel);
+                }
+
+                writeNextBlockIndex(NULL_BLOCK_INDEX, nextBlockIndex, channel);
+
+                ByteBuffer rootDirectoryEntry = ByteBuffer.allocateDirect(BLOCK_SIZE);
+                rootDirectoryEntryFormatter.accept(rootDirectoryEntry);
+                flipBufferAndWrite(rootDirectoryEntry, channel, "Root directory entry write error");// TODO
+            }
+        }
+    }
+
+    private static long getTotalSize(long blockCountLong) {
+        return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
+    }
+
+    private static void flipBufferAndWrite(ByteBuffer source, FileChannel channel, String errorMessage)
+            throws IOException, IllegalArgumentException {
+
+        flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
+    }
+
+    private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel) throws IOException {
+        buffer.putInt(index);
+        flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
     }
 }
