@@ -1,4 +1,4 @@
-package fit_manyak_at_ngs_dot_ru.testtasks.ffs.messages;
+package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages;
 
 import java.util.ResourceBundle;
 
@@ -31,12 +31,15 @@ public class Messages {
 
     public static final String BLOCK_READ_ERROR = BUNDLE.getString("BLOCK_READ_ERROR");
 
-    public static final String BAD_ROOT_DIRECTORY_ENTRY_PARENT_DIRECTORY_ENTRY_BLOCK_CHAIN_HEAD_ERROR =
-            BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_PARENT_DIRECTORY_ENTRY_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR");
+
+    public static final String BAD_DIRECTORY_ENTRY_FLAGS_ERROR = BUNDLE.getString("BAD_DIRECTORY_ENTRY_FLAGS_ERROR");
+    public static final String BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR =
+            BUNDLE.getString("BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR");
+    public static final String BAD_DIRECTORY_ENTRY_NAME_ERROR = BUNDLE.getString("BAD_DIRECTORY_ENTRY_NAME_ERROR");
 }

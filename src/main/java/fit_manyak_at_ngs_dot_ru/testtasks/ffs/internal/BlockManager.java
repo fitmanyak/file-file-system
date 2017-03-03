@@ -1,6 +1,7 @@
-package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
+package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.messages.Messages;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -33,7 +34,7 @@ public class BlockManager implements Closeable {
 
     private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
 
-    private static final int MINIMAL_BLOCK_COUNT = 3;
+    private static final int MINIMAL_BLOCK_COUNT = 4;
     private static final long MINIMAL_SIZE = MINIMAL_BLOCK_COUNT * BLOCK_SIZE;
     private static final long MAXIMAL_SIZE = ((1L << (8L * BLOCK_INDEX_SIZE)) - 1L) * BLOCK_SIZE;
 
@@ -51,6 +52,7 @@ public class BlockManager implements Closeable {
 
     public static final int NULL_BLOCK_INDEX = 0;
 
+    public static final int ROOT_DIRECTORY_ENTRY_BLOCK_INDEX = 0;
     private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
 
     private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
@@ -71,18 +73,13 @@ public class BlockManager implements Closeable {
 
     private final int blockCount;
 
-    private final int freeBlockCount;
-    private final int freeBlockChainHead;
-    private final ByteBuffer freeBlockData;
-
-    private final ByteBuffer nextBlockIndex;
+    private int freeBlockCount;
+    private int freeBlockChainHead;
 
     private final long blockTableOffset;
 
-    private final ByteBuffer block;
-
     private BlockManager(FileChannel channel, int blockCount, int freeBlockCount, int freeBlockChainHead,
-                         ByteBuffer nextBlockIndex, long blockTableOffset, ByteBuffer block) {
+                         long blockTableOffset) {
 
         this.channel = channel;
 
@@ -90,18 +87,61 @@ public class BlockManager implements Closeable {
 
         this.freeBlockCount = freeBlockCount;
         this.freeBlockChainHead = freeBlockChainHead;
-        this.freeBlockData = ByteBuffer.allocateDirect(FREE_BLOCK_DATA_SIZE);
-
-        this.nextBlockIndex = nextBlockIndex;
 
         this.blockTableOffset = blockTableOffset;
-
-        this.block = block;
     }
 
     @Override
     public void close() throws IOException {
         channel.close();
+    }
+
+    public ByteBuffer readRootDirectoryEntry() throws IOException {
+        return readBlock(ROOT_DIRECTORY_ENTRY_BLOCK_INDEX);
+    }
+
+    public ByteBuffer readBlock(int blockIndex) throws IOException {
+        return createReadAndFlipBuffer(BLOCK_SIZE, channel,
+                blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE,
+                Messages.BLOCK_READ_ERROR);// TODO
+    }
+
+    public void writeBlock(int blockIndex, ByteBuffer block) throws IOException {
+        block.flip();
+        channel.write(block, blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE);// TODO
+    }
+
+    public void writeDataInBlock(int blockIndex, long offset, ByteBuffer data) throws IOException {
+        data.flip();
+        channel.write(data, blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE + offset);// TODO
+    }
+    public int allocBlock() throws IOException {
+        if (freeBlockCount == 0) {
+            throw new FileFileSystemException("NO_FREE_BLOCK_ERROR");// TODO
+        }
+
+        long position = FIXED_SIZE_DATA_SIZE + Integer.toUnsignedLong(freeBlockChainHead) * BLOCK_INDEX_SIZE;
+        ByteBuffer freeBlockChainHeadNextBlockIndex =
+                createReadAndFlipBuffer(BLOCK_INDEX_SIZE, channel, position, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+        int newFreeBlockChainHead = freeBlockChainHeadNextBlockIndex.getInt();
+
+        freeBlockChainHeadNextBlockIndex.flip();
+        freeBlockChainHeadNextBlockIndex.putInt(NULL_BLOCK_INDEX);
+        freeBlockChainHeadNextBlockIndex.flip();
+        channel.write(freeBlockChainHeadNextBlockIndex, position);
+
+        int newFreeBlockCount = freeBlockCount - 1;
+        ByteBuffer freeBlockData = ByteBuffer.allocateDirect(FREE_BLOCK_DATA_SIZE);
+        freeBlockData.putInt(newFreeBlockCount);
+        freeBlockData.putInt(newFreeBlockChainHead);
+        freeBlockData.flip();
+        channel.write(freeBlockData, SIGNATURE_AND_GEOMETRY_SIZE);
+
+        int result = freeBlockChainHead;
+        freeBlockCount = newFreeBlockCount;
+        freeBlockChainHead = newFreeBlockChainHead;
+
+        return result;
     }
 
     public static void format(Path path, long size, Consumer<ByteBuffer> rootDirectoryEntryFormatter)
@@ -180,71 +220,63 @@ public class BlockManager implements Closeable {
     public static BlockManager mount(Path path, IRootDirectoryEntryChecker rootDirectoryEntryChecker)
             throws IOException {
 
-        FileChannel channel = null;
-        try {
-            channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
+        return Utilities.createWithCloseableArgument(
+                () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
+                channel -> mount(channel, rootDirectoryEntryChecker));
+    }
 
-            ByteBuffer fixedSizeData =
-                    createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
+    private static BlockManager mount(FileChannel channel, IRootDirectoryEntryChecker rootDirectoryEntryChecker)
+            throws IOException {
 
-            if (fixedSizeData.getShort() != SIGNATURE) {
-                throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
-            }
+        ByteBuffer fixedSizeData =
+                createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
 
-            if (fixedSizeData.get() != BLOCK_SIZE_RATIO) {
-                throw new FileFileSystemException(Messages.BAD_BLOCK_SIZE_RATIO_ERROR);
-            }
-
-            if (fixedSizeData.get() != BLOCK_INDEX_SIZE_EXPONENT) {
-                throw new FileFileSystemException(Messages.BAD_BLOCK_INDEX_SIZE_EXPONENT_ERROR);
-            }
-
-            if (fixedSizeData.get() != CONTENT_SIZE_SIZE_EXPONENT) {
-                throw new FileFileSystemException(Messages.BAD_CONTENT_SIZE_SIZE_EXPONENT_ERROR);
-            }
-
-            int blockCount = fixedSizeData.getInt();
-            if (Integer.compareUnsigned(blockCount, MINIMAL_BLOCK_COUNT) < 0) {
-                throw new FileFileSystemException(Messages.BAD_BLOCK_COUNT_ERROR);
-            }
-
-            int freeBlockCount = fixedSizeData.getInt();
-            if (Integer.compareUnsigned(blockCount, freeBlockCount) < 0) {
-                throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
-            }
-
-            int freeBlockChainHead = fixedSizeData.getInt();
-            checkBlockChainHead(() -> (freeBlockCount == 0), freeBlockChainHead,
-                    Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
-
-            if (channel.size() != getTotalSize(blockCount)) {
-                throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
-            }
-
-            ByteBuffer rootDirectoryEntryBlockNextBlockIndex =
-                    createReadAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
-            if (rootDirectoryEntryBlockNextBlockIndex.getInt() != NULL_BLOCK_INDEX) {
-                throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
-            }
-
-            long blockTableOffset = getBlockTableOffset(blockCount);
-            ByteBuffer rootDirectoryEntry =
-                    createReadAndFlipBuffer(BLOCK_SIZE, channel, blockTableOffset, Messages.BLOCK_READ_ERROR);
-            rootDirectoryEntryChecker.check(rootDirectoryEntry);
-
-            return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead,
-                    rootDirectoryEntryBlockNextBlockIndex, blockTableOffset, rootDirectoryEntry);
-        } catch (Throwable t) {
-            if (channel != null) {
-                try {
-                    channel.close();
-                } catch (Throwable closeThrowable) {
-                    t.addSuppressed(closeThrowable);
-                }
-            }
-
-            throw t;
+        if (fixedSizeData.getShort() != SIGNATURE) {
+            throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
         }
+
+        if (fixedSizeData.get() != BLOCK_SIZE_RATIO) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_SIZE_RATIO_ERROR);
+        }
+
+        if (fixedSizeData.get() != BLOCK_INDEX_SIZE_EXPONENT) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_INDEX_SIZE_EXPONENT_ERROR);
+        }
+
+        if (fixedSizeData.get() != CONTENT_SIZE_SIZE_EXPONENT) {
+            throw new FileFileSystemException(Messages.BAD_CONTENT_SIZE_SIZE_EXPONENT_ERROR);
+        }
+
+        int blockCount = fixedSizeData.getInt();
+        if (Integer.compareUnsigned(blockCount, MINIMAL_BLOCK_COUNT) < 0) {
+            throw new FileFileSystemException(Messages.BAD_BLOCK_COUNT_ERROR);
+        }
+
+        int freeBlockCount = fixedSizeData.getInt();
+        if (Integer.compareUnsigned(blockCount, freeBlockCount) < 0) {
+            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
+        }
+
+        int freeBlockChainHead = fixedSizeData.getInt();
+        checkBlockChainHead((freeBlockCount == 0), freeBlockChainHead,
+                Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
+
+        if (channel.size() != getTotalSize(blockCount)) {
+            throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
+        }
+
+        ByteBuffer rootDirectoryEntryBlockNextBlockIndex =
+                createReadAndFlipBuffer(BLOCK_INDEX_SIZE, channel, Messages.NEXT_BLOCK_INDEX_READ_ERROR);
+        if (rootDirectoryEntryBlockNextBlockIndex.getInt() != NULL_BLOCK_INDEX) {
+            throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_BLOCK_NEXT_BLOCK_INDEX_ERROR);
+        }
+
+        long blockTableOffset = getBlockTableOffset(blockCount);
+        ByteBuffer rootDirectoryEntry =
+                createReadAndFlipBuffer(BLOCK_SIZE, channel, blockTableOffset, Messages.BLOCK_READ_ERROR);
+        rootDirectoryEntryChecker.check(rootDirectoryEntry);
+
+        return new BlockManager(channel, blockCount, freeBlockCount, freeBlockChainHead, blockTableOffset);
     }
 
     private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, String errorMessage)
@@ -271,10 +303,9 @@ public class BlockManager implements Closeable {
         return buffer;
     }
 
-    public static void checkBlockChainHead(Supplier<Boolean> isEmptyProvider, int blockChainHead, String errorMessage)
+    public static void checkBlockChainHead(boolean isEmpty, int blockChainHead, String errorMessage)
             throws FileFileSystemException {
 
-        boolean isEmpty = isEmptyProvider.get();
         if ((isEmpty && blockChainHead != NULL_BLOCK_INDEX) || (!isEmpty && blockChainHead == NULL_BLOCK_INDEX)) {
             throw new FileFileSystemException(errorMessage);
         }
