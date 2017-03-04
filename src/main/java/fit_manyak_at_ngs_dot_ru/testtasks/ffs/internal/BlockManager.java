@@ -2,6 +2,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -70,13 +72,7 @@ public class BlockManager implements Closeable {
                 throws IOException, IllegalArgumentException;
     }
 
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    private interface IIOOperation {
-        public int perform(ByteBuffer buffer) throws IOException, IllegalArgumentException;
-    }
-
-    public class BlockFile {
+    private class BlockFile implements IBlockFile {
         private long size;
         private int blockChainLength;
         private int blockChainHead;
@@ -99,10 +95,12 @@ public class BlockManager implements Closeable {
             reset();
         }
 
+        @Override
         public long getSize() {
             return size;
         }
 
+        @Override
         public void setSize(long newSize) throws IOException, IllegalArgumentException {
             checkBlockFileSize(newSize);
 
@@ -168,14 +166,12 @@ public class BlockManager implements Closeable {
             }
         }
 
-        public int getBlockChainHead() {
-            return blockChainHead;
-        }
-
+        @Override
         public long getPosition() {
             return position;
         }
 
+        @Override
         public void setPosition(long newPosition) throws IOException, IllegalArgumentException {
             if (newPosition < 0L) {
                 throw new IllegalArgumentException("Bad block file position");// TODO
@@ -211,6 +207,7 @@ public class BlockManager implements Closeable {
             return position != 0L && withinBlockPosition == 0;
         }
 
+        @Override
         public void reset() {
             position = 0L;
             withinBlockPosition = 0;
@@ -219,10 +216,12 @@ public class BlockManager implements Closeable {
             withinChainIndex = 0;
         }
 
+        @Override
         public void clear() throws IOException, IllegalArgumentException {
             setSize(0L);
         }
 
+        @Override
         public int read(ByteBuffer destination) throws IOException, IllegalArgumentException {
             if (destination.isReadOnly()) {
                 throw new IllegalArgumentException("Read-only buffer");// TODO
@@ -271,6 +270,7 @@ public class BlockManager implements Closeable {
             return totalProcessed;
         }
 
+        @Override
         public int read(long newPosition, ByteBuffer destination) throws IOException, IllegalArgumentException {
             return performIOOperationAtPosition(newPosition, destination, this::read);
         }
@@ -283,6 +283,7 @@ public class BlockManager implements Closeable {
             return operation.perform(buffer);
         }
 
+        @Override
         public int write(ByteBuffer source) throws IOException, IllegalArgumentException {
             long newPosition = position + source.remaining();
             if (newPosition > size) {
@@ -297,15 +298,15 @@ public class BlockManager implements Closeable {
             }
         }
 
+        @Override
         public int write(long newPosition, ByteBuffer source) throws IOException, IllegalArgumentException {
             return performIOOperationAtPosition(newPosition, source, this::write);
         }
-    }
 
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    private interface INoReturnValueIOOperation {
-        public void perform(ByteBuffer buffer) throws IOException, IllegalArgumentException;
+        @Override
+        public int getBlockChainHead() {
+            return blockChainHead;
+        }
     }
 
     private final FileChannel channel;
@@ -411,15 +412,7 @@ public class BlockManager implements Closeable {
     private void readAndFlipBuffer(long position, ByteBuffer destination, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
-    }
-
-    private static void readAndFlipBuffer(ByteBuffer destination, INoReturnValueIOOperation readOperation)
-            throws IOException, IllegalArgumentException {
-
-        readOperation.perform(destination);
-
-        destination.flip();
+        Utilities.readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
     }
 
     private void read(long position, ByteBuffer destination, String errorMessage)
@@ -455,17 +448,7 @@ public class BlockManager implements Closeable {
     private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        flipBufferAndWrite(source, src -> write(position, src, errorMessage));
-    }
-
-    private static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation)
-            throws IOException, IllegalArgumentException {
-
-        source.flip();
-
-        writeOperation.perform(source);
-
-        source.clear();
+        Utilities.flipBufferAndWrite(source, src -> write(position, src, errorMessage));
     }
 
     private void write(long position, ByteBuffer source, String errorMessage)
@@ -567,24 +550,24 @@ public class BlockManager implements Closeable {
         write(getAbsolutePosition(blockIndex, withinBlockPosition), source, "Block write error");// TODO
     }
 
-    public BlockFile createBlockFile() {
+    public IBlockFile createBlockFile() {
         return new BlockFile();
     }
 
-    public BlockFile createBlockFile(long size) throws IOException, IllegalArgumentException {
+    public IBlockFile createBlockFile(long size) throws IOException, IllegalArgumentException {
         checkBlockFileSize(size);
 
-        BlockFile file = createBlockFile();
+        IBlockFile file = createBlockFile();
         file.setSize(size);
 
         return file;
     }
 
-    public BlockFile openBlockFile(long size, int blockChainHead) throws IOException, IllegalArgumentException {
+    public IBlockFile openBlockFile(long size, int blockChainHead) throws IOException, IllegalArgumentException {
         return openBlockFile(size, blockChainHead, false);
     }
 
-    public BlockFile openBlockFile(long size, int blockChainHead, boolean skipCheckBlockChainHead)
+    public IBlockFile openBlockFile(long size, int blockChainHead, boolean skipCheckBlockChainHead)
             throws IOException, IllegalArgumentException {
 
         checkBlockFileSize(size);
@@ -655,7 +638,7 @@ public class BlockManager implements Closeable {
     private static void flipBufferAndWrite(ByteBuffer source, FileChannel channel, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
+        Utilities.flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
     }
 
     private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel)
@@ -721,7 +704,7 @@ public class BlockManager implements Closeable {
             throws IOException, IllegalArgumentException {
 
         ByteBuffer destination = ByteBuffer.allocateDirect(size);
-        readAndFlipBuffer(destination, dst -> performIOOperation(dst, channel::read, errorMessage));
+        Utilities.readAndFlipBuffer(destination, dst -> performIOOperation(dst, channel::read, errorMessage));
 
         return destination;
     }

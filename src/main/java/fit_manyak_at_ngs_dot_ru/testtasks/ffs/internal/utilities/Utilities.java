@@ -1,7 +1,8 @@
-package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
+package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -9,18 +10,6 @@ import java.io.IOException;
  */
 
 public class Utilities {
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    public interface ICreator<T> {
-        public T create() throws IOException, IllegalArgumentException;
-    }
-
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    public interface ICreatorWithArgument<R, T> {
-        public R create(T argument) throws IOException, IllegalArgumentException;
-    }
-
     public static <R, T extends Closeable> R createWithCloseableArgument(ICreator<T> argumentCreator,
                                                                          ICreatorWithArgument<R, T> creator)
             throws IOException, IllegalArgumentException {
@@ -41,5 +30,23 @@ public class Utilities {
 
             throw t;
         }
+    }
+
+    public static void readAndFlipBuffer(ByteBuffer destination, INoReturnValueIOOperation readOperation)
+            throws IOException, IllegalArgumentException {
+
+        readOperation.perform(destination);
+
+        destination.flip();
+    }
+
+    public static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation)
+            throws IOException, IllegalArgumentException {
+
+        source.flip();
+
+        writeOperation.perform(source);
+
+        source.clear();
     }
 }
