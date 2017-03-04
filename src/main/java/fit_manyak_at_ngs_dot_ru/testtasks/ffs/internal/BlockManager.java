@@ -2,8 +2,9 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Creator;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -315,15 +316,8 @@ public class BlockManager implements Closeable {
 
         @Override
         public void setCalculatedSize(long newSize) {
-            if (size != newSize) {
-                size = newSize;
-                blockChainLength = getRequiredBlockCount(size);
-
-                if (position > size) {
-                    position = size;
-                    withinBlockPosition = (int) position;
-                }
-            }
+            size = newSize;
+            blockChainLength = getRequiredBlockCount(size);
         }
     }
 
@@ -434,7 +428,7 @@ public class BlockManager implements Closeable {
     private void readAndFlipBuffer(long position, ByteBuffer destination, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        Utilities.readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
+        IOUtilities.readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
     }
 
     private void read(long position, ByteBuffer destination, String errorMessage)
@@ -470,7 +464,7 @@ public class BlockManager implements Closeable {
     private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        Utilities.flipBufferAndWrite(source, src -> write(position, src, errorMessage));
+        IOUtilities.flipBufferAndWrite(source, src -> write(position, src, errorMessage));
     }
 
     private void write(long position, ByteBuffer source, String errorMessage)
@@ -670,7 +664,7 @@ public class BlockManager implements Closeable {
     private static void flipBufferAndWrite(ByteBuffer source, FileChannel channel, String errorMessage)
             throws IOException, IllegalArgumentException {
 
-        Utilities.flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
+        IOUtilities.flipBufferAndWrite(source, src -> performIOOperation(src, channel::write, errorMessage));
     }
 
     private static void writeNextBlockIndex(int index, ByteBuffer buffer, FileChannel channel)
@@ -681,7 +675,7 @@ public class BlockManager implements Closeable {
     }
 
     public static BlockManager mount(Path path) throws IOException, IllegalArgumentException {
-        return Utilities.createWithCloseableArgument(
+        return Creator.createWithCloseableArgument(
                 () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
                 BlockManager::mount);
     }
@@ -733,7 +727,7 @@ public class BlockManager implements Closeable {
             throws IOException, IllegalArgumentException {
 
         ByteBuffer destination = ByteBuffer.allocateDirect(size);
-        Utilities.readAndFlipBuffer(destination, dst -> performIOOperation(dst, channel::read, errorMessage));
+        IOUtilities.readAndFlipBuffer(destination, dst -> performIOOperation(dst, channel::read, errorMessage));
 
         return destination;
     }

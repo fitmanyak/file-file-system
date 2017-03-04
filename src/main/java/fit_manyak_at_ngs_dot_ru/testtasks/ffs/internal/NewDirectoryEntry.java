@@ -1,9 +1,12 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Creator;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOAction;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -138,7 +141,7 @@ public abstract class NewDirectoryEntry {
         this.blockManager = blockManager;
     }
 
-    private void updateContentData() throws IOException, IllegalArgumentException {
+    private void updateContentData() throws FileFileSystemException {
         long newContentSize = content.getSize();
         int newContentBlockChainHead = content.getBlockChainHead();
         boolean contentBlockChainHeadChanged = newContentBlockChainHead != contentBlockChainHead;
@@ -149,8 +152,8 @@ public abstract class NewDirectoryEntry {
                 contentData.putInt(newContentBlockChainHead);
             }
 
-            Utilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src),
-                    "Content data write error");// TODO
+            IOUtilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src),
+                    "Directory entry content data write error");// TODO
 
             contentSize = newContentSize;
             contentBlockChainHead = newContentBlockChainHead;
@@ -161,9 +164,11 @@ public abstract class NewDirectoryEntry {
         return entry.getBlockChainHead();
     }
 
-    public ICommonFile getContent() throws IOException, IllegalArgumentException {
+    public ICommonFile getContent() throws FileFileSystemException {
         if (content == null) {
-            content = new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead));
+            IOUtilities.performIOAction(
+                    () -> content = new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
+                    "Directory entry content block file open error");// TODO
         }
 
         return content;
@@ -180,8 +185,8 @@ public abstract class NewDirectoryEntry {
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes.length);
 
-        return Utilities.createWithCloseableArgument(
-                () -> Utilities.create(() -> blockManager.createBlockFile(entrySize), "Directory entry create error"),
+        return Creator.createWithCloseableArgument(
+                () -> Creator.create(() -> blockManager.createBlockFile(entrySize), "Directory entry create error"),
                 entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
@@ -194,10 +199,6 @@ public abstract class NewDirectoryEntry {
         return nameBytes;
     }
 
-    private static int getEntrySizeShort(short nameSize) {
-        return getEntrySize(Short.toUnsignedInt(nameSize));
-    }
-
     private static int getEntrySize(int nameSize) {
         return FIXED_SIZE_DATA_SIZE + nameSize;
     }
@@ -205,11 +206,11 @@ public abstract class NewDirectoryEntry {
     private static <T extends NewDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
                                                           IBlockFile entry, BlockManager blockManager,
                                                           ICreator<T> creator)
-            throws IOException, IllegalArgumentException {
+            throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
         fillNewEntryData(entryData, flags, nameBytes);
-        Utilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
+        IOUtilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
 
         return creator.create(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
     }
@@ -220,5 +221,46 @@ public abstract class NewDirectoryEntry {
         entryData.putInt(BlockManager.NULL_BLOCK_INDEX);
         entryData.putShort((short) nameBytes.length);
         entryData.put(nameBytes);
+    }
+
+    public static NewDirectoryEntry open(int blockChainHead, BlockManager blockManager)
+            throws IOException, IllegalArgumentException {
+
+        IBlockFile entry = blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead);
+        ByteBuffer entryFixedSizeData = createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, entry,
+                "Directory entry fixed-size data read error");// TODO
+
+        int flags = entryFixedSizeData.getInt();
+        boolean isFile = flags == FILE_FLAGS;
+        boolean isDirectory = flags == DIRECTORY_FLAGS;
+        if (!isFile && !isDirectory) {
+            throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_FLAGS_ERROR);
+        }
+
+        long contentSize = entryFixedSizeData.getLong();
+        int contentBlockChainHead = entryFixedSizeData.getInt();
+
+        int nameSize = Short.toUnsignedInt(entryFixedSizeData.getShort());
+        if (nameSize == 0) {
+            throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_NAME_ERROR);
+        }
+
+        entry.setCalculatedSize(getEntrySize(nameSize));
+
+        ByteBuffer entryName = createReadAndFlipBuffer(nameSize, entry, "Directory entry name read error");// TODO
+        byte[] nameBytes = new byte[nameSize];
+        entryName.get(nameBytes);
+        String name = new String(nameBytes, StandardCharsets.UTF_8);
+
+        return isFile ? new FileDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager) :
+                new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
+    }
+
+    private static ByteBuffer createReadAndFlipBuffer(int size, IBlockFile file, String errorMessage)
+            throws FileFileSystemException {
+        ByteBuffer destination = ByteBuffer.allocateDirect(size);
+        IOUtilities.readAndFlipBuffer(destination, file::read, errorMessage);
+
+        return destination;
     }
 }

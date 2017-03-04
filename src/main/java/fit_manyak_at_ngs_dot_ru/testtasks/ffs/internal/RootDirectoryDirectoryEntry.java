@@ -20,4 +20,8 @@ public class RootDirectoryDirectoryEntry extends NewDirectoryEntry {
     public static void format(ByteBuffer block) {
         fillNewEntryData(block, DIRECTORY_FLAGS, NAME_BYTES);
     }
+
+    public static RootDirectoryDirectoryEntry open(BlockManager blockManager) {
+        return null;// TODO
+    }
 }

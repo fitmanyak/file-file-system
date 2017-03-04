@@ -2,7 +2,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.BlockManager;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.RootDirectory;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Creator;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -38,7 +38,7 @@ public class FileFileSystem implements Closeable {
     }
 
     public static FileFileSystem mount(Path path) throws IOException, IllegalArgumentException {
-        return Utilities.createWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
+        return Creator.createWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
     }
 
     private static FileFileSystem mount(BlockManager blockManager) throws IOException, IllegalArgumentException {
