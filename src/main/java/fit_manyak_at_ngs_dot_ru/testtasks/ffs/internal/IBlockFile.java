@@ -1,7 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
