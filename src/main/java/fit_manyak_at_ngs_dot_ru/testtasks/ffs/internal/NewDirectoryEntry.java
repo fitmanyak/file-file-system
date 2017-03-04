@@ -1,5 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOAction;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
 
@@ -16,12 +17,6 @@ public abstract class NewDirectoryEntry {
 
     private static final int CONTENT_DATA_SIZE = BlockManager.CONTENT_SIZE_SIZE + BlockManager.BLOCK_INDEX_SIZE;
     private static final long CONTENT_DATA_POSITION = FLAGS_SIZE;
-
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    private interface IIOAction {
-        public void perform() throws IOException, IllegalArgumentException;
-    }
 
     private class Content implements IBlockFile {
         private final IBlockFile delegate;
@@ -129,7 +124,9 @@ public abstract class NewDirectoryEntry {
                 contentData.putInt(newContentBlockChainHead);
             }
 
-            Utilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src));
+            Utilities.performIOAction(
+                    () -> Utilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src)),
+                    "Content data write error");// TODO
 
             contentSize = newContentSize;
             contentBlockChainHead = newContentBlockChainHead;
