@@ -11,12 +11,6 @@ import java.nio.ByteBuffer;
  */
 
 public class File implements IFile {
-    private final DirectoryEntry entry;
-
-    public File(DirectoryEntry entry) {
-        this.entry = entry;
-    }
-
     @Override
     public void close() throws IOException {
     }

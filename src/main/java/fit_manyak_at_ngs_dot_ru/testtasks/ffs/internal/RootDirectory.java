@@ -12,13 +12,9 @@ import java.nio.ByteBuffer;
  */
 
 public class RootDirectory implements IDirectory {
-    private final DirectoryEntry entry;
-
     private final BlockManager blockManager;
 
-    private RootDirectory(DirectoryEntry entry, BlockManager blockManager) {
-        this.entry = entry;
-
+    private RootDirectory(BlockManager blockManager) {
         this.blockManager = blockManager;
     }
 
@@ -54,13 +50,11 @@ public class RootDirectory implements IDirectory {
         return null;
     }
 
-    public static void format(ByteBuffer rootDirectoryEntry) {
-        DirectoryEntry.formatRootDirectoryEntry(rootDirectoryEntry);// TODO
+    public static void format(ByteBuffer block) {
+        RootDirectoryDirectoryEntry.format(block);
     }
 
     public static RootDirectory open(BlockManager blockManager) throws IOException, IllegalArgumentException {
-        return null/*new RootDirectory(DirectoryEntry
-                .read(blockManager.readRootDirectoryEntry(), BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX,
-                        blockManager), blockManager)*/;
+        return new RootDirectory(blockManager);// TODO
     }
 }

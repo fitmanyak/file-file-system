@@ -1,11 +1,13 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOAction;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Utilities;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -14,11 +16,19 @@ import java.nio.ByteBuffer;
 
 public abstract class NewDirectoryEntry {
     private static final int FLAGS_SIZE = 4;
+    protected static final int FILE_FLAGS = 0;
+    protected static final int DIRECTORY_FLAGS = 1;
 
     private static final int CONTENT_DATA_SIZE = BlockManager.CONTENT_SIZE_SIZE + BlockManager.BLOCK_INDEX_SIZE;
     private static final long CONTENT_DATA_POSITION = FLAGS_SIZE;
 
-    private class Content implements IBlockFile {
+    private static final int NAME_SIZE_SIZE = 2;
+    private static final int NAME_MAXIMAL_SIZE = (1 << (8 * NAME_SIZE_SIZE)) - 1;
+    private static final short NULL_NAME_SIZE = 0;
+
+    private static final int FIXED_SIZE_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE + NAME_SIZE_SIZE;
+
+    private class Content implements ICommonFile {
         private final IBlockFile delegate;
 
         private Content(IBlockFile delegate) {
@@ -91,26 +101,35 @@ public abstract class NewDirectoryEntry {
             return performUpdatedContentDataIOOperation(source, src -> delegate.write(newPosition, src));
         }
 
-        @Override
-        public int getBlockChainHead() {
+        private int getBlockChainHead() {
             return delegate.getBlockChainHead();
         }
     }
 
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    protected interface ICreator<T extends NewDirectoryEntry> {
+        public T create(IBlockFile entry, IBlockFile contentFile, String name);
+    }
+
     private final IBlockFile entry;
 
-    private final IBlockFile content;
+    private final Content content;
     private long contentSize;
     private int contentBlockChainHead;
     private ByteBuffer contentData;
 
-    private NewDirectoryEntry(IBlockFile entry, IBlockFile content) {
+    private final String name;
+
+    protected NewDirectoryEntry(IBlockFile entry, IBlockFile contentFile, String name) {
         this.entry = entry;
 
-        this.content = content;
-        this.contentSize = content.getSize();
-        this.contentBlockChainHead = content.getBlockChainHead();
+        this.content = new Content(contentFile);
+        this.contentSize = this.content.getSize();
+        this.contentBlockChainHead = this.content.getBlockChainHead();
         this.contentData = ByteBuffer.allocateDirect(CONTENT_DATA_SIZE);
+
+        this.name = name;
     }
 
     private void updateContentData() throws IOException, IllegalArgumentException {
@@ -124,12 +143,68 @@ public abstract class NewDirectoryEntry {
                 contentData.putInt(newContentBlockChainHead);
             }
 
-            Utilities.performIOAction(
-                    () -> Utilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src)),
+            Utilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src),
                     "Content data write error");// TODO
 
             contentSize = newContentSize;
             contentBlockChainHead = newContentBlockChainHead;
         }
+    }
+
+    public int getBlockChainHead() {
+        return entry.getBlockChainHead();
+    }
+
+    public ICommonFile getContent() {
+        return content;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    protected static <T extends NewDirectoryEntry> T create(int flags, String name, BlockManager blockManager,
+                                                            ICreator<T> creator)
+            throws IOException, IllegalArgumentException {
+
+        byte[] nameBytes = getNameBytes(name);
+        int entrySize = getEntrySize(nameBytes.length);
+
+        return Utilities.createWithCloseableArgument(
+                () -> Utilities.create(() -> blockManager.createBlockFile(entrySize), "Directory entry create error"),
+                entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
+    }
+
+    private static byte[] getNameBytes(String name) throws IllegalArgumentException {
+        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        if (nameBytes.length > NAME_MAXIMAL_SIZE) {
+            throw new IllegalArgumentException("Too long directory entry name");// TODO
+        }
+
+        return nameBytes;
+    }
+
+    private static int getEntrySize(int nameSize) {
+        return FIXED_SIZE_DATA_SIZE + nameSize;
+    }
+
+    private static <T extends NewDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
+                                                          IBlockFile entry, BlockManager blockManager,
+                                                          ICreator<T> creator)
+            throws IOException, IllegalArgumentException {
+
+        ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
+        fillNewEntryData(entryData, flags, nameBytes);
+        Utilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
+
+        return creator.create(entry, blockManager.createBlockFile(), name);
+    }
+
+    protected static void fillNewEntryData(ByteBuffer entryData, int flags, byte[] nameBytes) {
+        entryData.putInt(flags);
+        entryData.putLong(0L);
+        entryData.putInt(BlockManager.NULL_BLOCK_INDEX);
+        entryData.putShort((short) nameBytes.length);
+        entryData.put(nameBytes);
     }
 }

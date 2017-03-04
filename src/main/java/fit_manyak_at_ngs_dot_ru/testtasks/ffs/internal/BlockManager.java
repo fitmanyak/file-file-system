@@ -304,8 +304,26 @@ public class BlockManager implements Closeable {
         }
 
         @Override
+        public void close() throws IOException, IllegalArgumentException {
+            clear();
+        }
+
+        @Override
         public int getBlockChainHead() {
             return blockChainHead;
+        }
+
+        @Override
+        public void setCalculatedSize(long newSize) {
+            if (size != newSize) {
+                size = newSize;
+                blockChainLength = getRequiredBlockCount(size);
+
+                if (position > size) {
+                    position = size;
+                    withinBlockPosition = (int) position;
+                }
+            }
         }
     }
 

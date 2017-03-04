@@ -12,6 +12,14 @@ import java.nio.ByteBuffer;
  */
 
 public class Utilities {
+    public static <T> T create(ICreator<T> creator, String errorMessage) throws IOException, IllegalArgumentException {
+        try {
+            return creator.create();
+        } catch (Throwable t) {
+            throw new FileFileSystemException(errorMessage, t);
+        }
+    }
+
     public static <R, T extends Closeable> R createWithCloseableArgument(ICreator<T> argumentCreator,
                                                                          ICreatorWithArgument<R, T> creator)
             throws IOException, IllegalArgumentException {
@@ -52,11 +60,16 @@ public class Utilities {
         source.clear();
     }
 
-    public static void performIOAction(IIOAction action, String errorMessage) throws FileFileSystemException {
+    public static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation,
+                                          String errorMessage) throws IOException, IllegalArgumentException {
+
+        performIOAction(() -> flipBufferAndWrite(source, writeOperation), errorMessage);
+    }
+
+    private static void performIOAction(IIOAction action, String errorMessage) throws FileFileSystemException {
         try {
             action.perform();
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             throw new FileFileSystemException(errorMessage, t);
         }
     }
