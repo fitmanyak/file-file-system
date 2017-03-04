@@ -23,6 +23,10 @@ public class RootDirectory implements IDirectory {
     }
 
     @Override
+    public void close() throws IOException {
+    }
+
+    @Override
     public IFile createFile(String name) throws IOException, IllegalArgumentException {
         /*long contentSize = entry.getContentSize();
         long newContentSize = contentSize + BlockManager.BLOCK_INDEX_SIZE;

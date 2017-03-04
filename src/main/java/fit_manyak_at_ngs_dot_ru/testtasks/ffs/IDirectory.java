@@ -1,5 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -8,7 +9,7 @@ import java.io.IOException;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IDirectory {
+public interface IDirectory extends Closeable {
     public IFile createFile(String name) throws IOException, IllegalArgumentException;
     public IFile openFile(String name) throws IOException, IllegalArgumentException;
 }
