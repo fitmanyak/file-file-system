@@ -10,12 +10,14 @@ import java.io.IOException;
  */
 
 public abstract class NamedDirectoryEntry extends NewDirectoryEntry {
-    protected NamedDirectoryEntry(IBlockFile entry, IBlockFile contentFile, String name) {
-        super(entry, contentFile, name);
+    protected NamedDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                                  BlockManager blockManager) {
+
+        super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 
     protected static <T extends NamedDirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
-                                                            ICreator<T> creator)
+                                                                   ICreator<T> creator)
             throws IOException, IllegalArgumentException {
 
         if (name.isEmpty()) {

@@ -11,8 +11,10 @@ public class RootDirectoryDirectoryEntry extends NewDirectoryEntry {
     private static final String NAME = "";
     private static final byte[] NAME_BYTES = new byte[0];
 
-    private RootDirectoryDirectoryEntry(IBlockFile entry, IBlockFile contentFile) {
-        super(entry, contentFile, NAME);
+    private RootDirectoryDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead,
+                                        BlockManager blockManager) {
+
+        super(entry, contentSize, contentBlockChainHead, NAME, blockManager);
     }
 
     public static void format(ByteBuffer block) {

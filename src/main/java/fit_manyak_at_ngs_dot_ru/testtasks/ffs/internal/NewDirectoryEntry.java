@@ -109,27 +109,33 @@ public abstract class NewDirectoryEntry {
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     protected interface ICreator<T extends NewDirectoryEntry> {
-        public T create(IBlockFile entry, IBlockFile contentFile, String name);
+        public T create(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                        BlockManager blockManager);
     }
 
     private final IBlockFile entry;
 
-    private final Content content;
+    private Content content;
     private long contentSize;
     private int contentBlockChainHead;
     private ByteBuffer contentData;
 
     private final String name;
 
-    protected NewDirectoryEntry(IBlockFile entry, IBlockFile contentFile, String name) {
+    private final BlockManager blockManager;
+
+    protected NewDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                                BlockManager blockManager) {
+
         this.entry = entry;
 
-        this.content = new Content(contentFile);
-        this.contentSize = this.content.getSize();
-        this.contentBlockChainHead = this.content.getBlockChainHead();
+        this.contentSize = contentSize;
+        this.contentBlockChainHead = contentBlockChainHead;
         this.contentData = ByteBuffer.allocateDirect(CONTENT_DATA_SIZE);
 
         this.name = name;
+
+        this.blockManager = blockManager;
     }
 
     private void updateContentData() throws IOException, IllegalArgumentException {
@@ -155,7 +161,11 @@ public abstract class NewDirectoryEntry {
         return entry.getBlockChainHead();
     }
 
-    public ICommonFile getContent() {
+    public ICommonFile getContent() throws IOException, IllegalArgumentException {
+        if (content == null) {
+            content = new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead));
+        }
+
         return content;
     }
 
@@ -184,6 +194,10 @@ public abstract class NewDirectoryEntry {
         return nameBytes;
     }
 
+    private static int getEntrySizeShort(short nameSize) {
+        return getEntrySize(Short.toUnsignedInt(nameSize));
+    }
+
     private static int getEntrySize(int nameSize) {
         return FIXED_SIZE_DATA_SIZE + nameSize;
     }
@@ -197,7 +211,7 @@ public abstract class NewDirectoryEntry {
         fillNewEntryData(entryData, flags, nameBytes);
         Utilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
 
-        return creator.create(entry, blockManager.createBlockFile(), name);
+        return creator.create(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
     }
 
     protected static void fillNewEntryData(ByteBuffer entryData, int flags, byte[] nameBytes) {

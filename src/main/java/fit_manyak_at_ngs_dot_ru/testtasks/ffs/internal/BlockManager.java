@@ -84,12 +84,12 @@ public class BlockManager implements Closeable {
         private int withinChainIndex;
 
         private BlockFile() {
-            this(0L, NULL_BLOCK_INDEX);
+            this(0L, 0, NULL_BLOCK_INDEX);
         }
 
-        private BlockFile(long size, int blockChainHead) {
+        private BlockFile(long size, int blockChainLength, int blockChainHead) {
             this.size = size;
-            this.blockChainLength = getRequiredBlockCount(size);
+            this.blockChainLength = blockChainLength;
             this.blockChainHead = blockChainHead;
 
             reset();
@@ -369,8 +369,12 @@ public class BlockManager implements Closeable {
     }
 
     private static void checkBlockFileSize(long size) throws IllegalArgumentException {
-        if (size < 0L) {
-            throw new IllegalArgumentException("Bad block file size");// TODO
+        checkSize(size, 0L, "Bad block file size");// TODO
+    }
+
+    private static void checkSize(long size, long minimalSize, String errorMessage) throws IllegalArgumentException {
+        if (size < minimalSize || size > MAXIMAL_SIZE) {
+            throw new IllegalArgumentException(errorMessage);
         }
     }
 
@@ -568,14 +572,8 @@ public class BlockManager implements Closeable {
         write(getAbsolutePosition(blockIndex, withinBlockPosition), source, "Block write error");// TODO
     }
 
-    public IBlockFile createBlockFile() {
-        return new BlockFile();
-    }
-
     public IBlockFile createBlockFile(long size) throws IOException, IllegalArgumentException {
-        checkBlockFileSize(size);
-
-        IBlockFile file = createBlockFile();
+        IBlockFile file = new BlockFile();
         file.setSize(size);
 
         return file;
@@ -590,28 +588,44 @@ public class BlockManager implements Closeable {
 
         checkBlockFileSize(size);
 
-        if (!skipCheckBlockChainHead) {
-            checkBlockChainHead((size == 0L), blockChainHead, "Bad block file block chain head");// TODO
-        }
+        int blockChainLength = getRequiredBlockCount(size);
+        checkBlockChainHead(blockCount, blockChainLength, blockChainHead, "Bad block file block chain length",
+                "Bad block file block chain head", skipCheckBlockChainHead);// TODO
 
-        return new BlockFile(size, blockChainHead);
+        return new BlockFile(size, blockChainLength, blockChainHead);
     }
 
-    private static void checkBlockChainHead(boolean isEmpty, int blockChainHead, String errorMessage)
+    private static void checkBlockChainHead(int blockCount, int blockChainLength, int blockChainHead,
+                                            String badBlockChainLengthErrorMessage,
+                                            String badBlockChainHeadErrorMessage) throws FileFileSystemException {
+
+        checkBlockChainHead(blockCount, blockChainLength, blockChainHead, badBlockChainLengthErrorMessage,
+                badBlockChainHeadErrorMessage, false);
+    }
+
+    private static void checkBlockChainHead(int blockCount, int blockChainLength, int blockChainHead,
+                                            String badBlockChainLengthErrorMessage,
+                                            String badBlockChainHeadErrorMessage, boolean skipCheckBlockChainHead)
             throws FileFileSystemException {
 
-        if ((isEmpty && blockChainHead != NULL_BLOCK_INDEX) || (!isEmpty && blockChainHead == NULL_BLOCK_INDEX)) {
-            throw new FileFileSystemException(errorMessage);
+        if (Integer.compareUnsigned(blockCount, blockChainLength) < 0) {
+            throw new FileFileSystemException(badBlockChainLengthErrorMessage);
+        }
+
+        if (!skipCheckBlockChainHead) {
+            boolean blockChainIsEmpty = blockChainLength == 0;
+            boolean blockChainHeadIsNULL = blockChainHead == NULL_BLOCK_INDEX;
+            if ((blockChainIsEmpty && !blockChainHeadIsNULL) || (!blockChainIsEmpty && blockChainHeadIsNULL)) {
+                throw new FileFileSystemException(badBlockChainHeadErrorMessage);
+            }
         }
     }
 
     public static void format(Path path, long size, Consumer<ByteBuffer> rootDirectoryEntryFormatter)
             throws IOException, IllegalArgumentException {
 
-        if (size < MINIMAL_SIZE || size > MAXIMAL_SIZE) {
-            throw new IllegalArgumentException(
-                    String.format(Messages.BAD_SIZE_FOR_FORMAT_ERROR, size, MINIMAL_SIZE, MAXIMAL_SIZE));
-        }
+        checkSize(size, MINIMAL_SIZE,
+                String.format(Messages.BAD_SIZE_FOR_FORMAT_ERROR, size, MINIMAL_SIZE, MAXIMAL_SIZE));
 
         try (RandomAccessFile file = new RandomAccessFile(path.toString(), "rw")) {
             long blockCountLong = getRequiredBlockCountLong(size);
@@ -697,12 +711,9 @@ public class BlockManager implements Closeable {
         }
 
         int freeBlockCount = fixedSizeData.getInt();
-        if (Integer.compareUnsigned(blockCount, freeBlockCount) < 0) {
-            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
-        }
-
         int freeBlockChainHead = fixedSizeData.getInt();
-        checkBlockChainHead((freeBlockCount == 0), freeBlockChainHead, Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
+        checkBlockChainHead(blockCount, freeBlockCount, freeBlockChainHead, Messages.BAD_FREE_BLOCK_COUNT_ERROR,
+                Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
 
         if (channel.size() != getTotalSize(blockCount)) {
             throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);

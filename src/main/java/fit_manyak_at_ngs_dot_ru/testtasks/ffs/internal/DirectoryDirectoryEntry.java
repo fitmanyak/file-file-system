@@ -8,8 +8,10 @@ import java.io.IOException;
  */
 
 public class DirectoryDirectoryEntry extends NamedDirectoryEntry {
-    private DirectoryDirectoryEntry(IBlockFile entry, IBlockFile contentFile, String name) {
-        super(entry, contentFile, name);
+    private DirectoryDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                                    BlockManager blockManager) {
+
+        super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 
     public static DirectoryDirectoryEntry create(String name, BlockManager blockManager)
