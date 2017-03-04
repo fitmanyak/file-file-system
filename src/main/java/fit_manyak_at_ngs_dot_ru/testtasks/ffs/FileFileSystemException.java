@@ -11,4 +11,8 @@ public class FileFileSystemException extends IOException {
     public FileFileSystemException(String message) {
         super(message);
     }
+
+    public FileFileSystemException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

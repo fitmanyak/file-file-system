@@ -1,5 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -48,5 +50,14 @@ public class Utilities {
         writeOperation.perform(source);
 
         source.clear();
+    }
+
+    public static void performIOAction(IIOAction action, String errorMessage) throws FileFileSystemException {
+        try {
+            action.perform();
+        }
+        catch (Throwable t) {
+            throw new FileFileSystemException(errorMessage, t);
+        }
     }
 }
