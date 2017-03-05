@@ -25,6 +25,11 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry {
         return true;
     }
 
+    @Override
+    public void setName(String newName) throws FileFileSystemException {
+        throw new UnsupportedOperationException("Can't change root directory name");// TODO
+    }
+
     public static void format(ByteBuffer block) {
         fillNewEntryData(block, DIRECTORY_FLAGS, NAME_BYTES);
     }

@@ -7,7 +7,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  *         Created on 04.03.2017.
  */
 
-public class DirectoryDirectoryEntry extends NamedDirectoryEntry {
+public class DirectoryDirectoryEntry extends DirectoryEntry {
     private DirectoryDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
         super(entry, name, blockManager);
     }

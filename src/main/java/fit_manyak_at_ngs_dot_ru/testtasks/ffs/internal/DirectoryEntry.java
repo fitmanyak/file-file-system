@@ -7,7 +7,6 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHe
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IProviderWithArgument;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -28,7 +27,10 @@ public abstract class DirectoryEntry {
     private static final int NAME_SIZE_SIZE = 2;
     private static final int NAME_MAXIMAL_SIZE = (1 << (8 * NAME_SIZE_SIZE)) - 1;
 
-    private static final int FIXED_SIZE_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE + NAME_SIZE_SIZE;
+    private static final int WITHOUT_NAME_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE;
+    private static final int FIXED_SIZE_DATA_SIZE = WITHOUT_NAME_DATA_SIZE + NAME_SIZE_SIZE;
+
+    private static final long NAME_DATA_POSITION = WITHOUT_NAME_DATA_SIZE;
 
     private class Content implements ICommonFile {
         private final IBlockFile delegate;
@@ -140,7 +142,7 @@ public abstract class DirectoryEntry {
     private int contentBlockChainHead;
     private ByteBuffer contentData;
 
-    private final String name;
+    private String name;
 
     private final BlockManager blockManager;
 
@@ -173,12 +175,17 @@ public abstract class DirectoryEntry {
                 contentData.putInt(newContentBlockChainHead);
             }
 
-            IOUtilities.flipBufferAndWrite(contentData, src -> entry.write(CONTENT_DATA_POSITION, src),
-                    "Directory entry content data write error");// TODO
+            flipBufferAndWrite(CONTENT_DATA_POSITION, contentData, "Directory entry content data write error");// TODO
 
             contentSize = newContentSize;
             contentBlockChainHead = newContentBlockChainHead;
         }
+    }
+
+    private void flipBufferAndWrite(long position, ByteBuffer source, String errorMessage)
+            throws FileFileSystemException {
+
+        IOUtilities.flipBufferAndWrite(source, src -> entry.write(position, src), errorMessage);
     }
 
     public int getBlockChainHead() {
@@ -201,15 +208,22 @@ public abstract class DirectoryEntry {
         return name;
     }
 
-    protected static <T extends DirectoryEntry> T create(int flags, String name, BlockManager blockManager,
-                                                         ICreator<T> creator) throws FileFileSystemException {
+    public void setName(String newName) throws FileFileSystemException {
+        if (!name.equals(newName)) {
+            checkNameNotEmpty(newName);
 
-        byte[] nameBytes = getNameBytes(name);
-        int entrySize = getEntrySize(nameBytes.length);
+            byte[] newNameBytes = getNameBytes(newName);
+            ErrorHandlingHelper
+                    .performAction(() -> changeName(newNameBytes), "Directory entry name change error");// TODO
 
-        return ErrorHandlingHelper
-                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry create error",
-                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
+            name = newName;
+        }
+    }
+
+    private static void checkNameNotEmpty(String name) throws FileFileSystemException {
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("Empty directory entry name");// TODO
+        }
     }
 
     private static byte[] getNameBytes(String name) {
@@ -221,8 +235,46 @@ public abstract class DirectoryEntry {
         return nameBytes;
     }
 
+    private void changeName(byte[] newNameBytes) throws FileFileSystemException {
+        int newEntrySize = getEntrySize(newNameBytes);
+        entry.setSize(newEntrySize);
+
+        int newNameDataSize = newEntrySize - WITHOUT_NAME_DATA_SIZE;
+        ByteBuffer newNameData = ByteBuffer.allocateDirect(newNameDataSize);
+        fillNewNameData(newNameData, newNameBytes);
+        flipBufferAndWrite(NAME_DATA_POSITION, newNameData, "Directory entry name data write error");// TODO
+    }
+
+    private static int getEntrySize(byte[] nameBytes) {
+        return getEntrySize(nameBytes.length);
+    }
+
     private static int getEntrySize(int nameSize) {
         return FIXED_SIZE_DATA_SIZE + nameSize;
+    }
+
+    private static void fillNewNameData(ByteBuffer newNameData, byte[] nameBytes) {
+        newNameData.putShort((short) nameBytes.length);
+        newNameData.put(nameBytes);
+    }
+
+    protected static <T extends DirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
+                                                              ICreator<T> creator) throws FileFileSystemException {
+
+        checkNameNotEmpty(name);
+
+        return create(flags, name, blockManager, creator);
+    }
+
+    protected static <T extends DirectoryEntry> T create(int flags, String name, BlockManager blockManager,
+                                                         ICreator<T> creator) throws FileFileSystemException {
+
+        byte[] nameBytes = getNameBytes(name);
+        int entrySize = getEntrySize(nameBytes);
+
+        return ErrorHandlingHelper
+                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry create error",
+                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
     private static <T extends DirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
@@ -240,8 +292,7 @@ public abstract class DirectoryEntry {
         entryData.putInt(flags);
         entryData.putLong(0L);
         entryData.putInt(BlockManager.NULL_BLOCK_INDEX);
-        entryData.putShort((short) nameBytes.length);
-        entryData.put(nameBytes);
+        fillNewNameData(entryData, nameBytes);
     }
 
     public static DirectoryEntry openAny(int blockChainHead, BlockManager blockManager) throws FileFileSystemException {
