@@ -35,7 +35,7 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry {
     }
 
     public static RootDirectoryDirectoryEntry open(BlockManager blockManager) throws FileFileSystemException {
-        return open(BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, blockManager, DirectoryEntry::checkIsDirectory,
+        return open(BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, true, blockManager, DirectoryEntry::checkIsDirectory,
                 RootDirectoryDirectoryEntry::open);
     }
 

@@ -324,12 +324,20 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         return open(blockChainHead, blockManager, checker, getOpener(creator));
     }
 
-    protected static <T extends DirectoryEntry> T open(int blockChainHead, BlockManager blockManager,
+    private static <T extends DirectoryEntry> T open(int blockChainHead, BlockManager blockManager,
+                                                     IKindChecker checker, IOpener<T> opener)
+            throws FileFileSystemException {
+
+        return open(blockChainHead, false, blockManager, checker, opener);
+    }
+
+    protected static <T extends DirectoryEntry> T open(int blockChainHead, boolean skipCheckBlockChainHead,
+                                                       BlockManager blockManager,
                                                        IKindChecker checker, IOpener<T> opener)
             throws FileFileSystemException {
 
         IBlockFile entry = ErrorHandlingHelper
-                .get(() -> blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead),
+                .get(() -> blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead, skipCheckBlockChainHead),
                         "Directory entry block file open error");// TODO
         ByteBuffer entryFixedSizeData = createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, entry,
                 "Directory entry fixed-size data read error");// TODO
