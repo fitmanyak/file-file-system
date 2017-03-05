@@ -12,9 +12,13 @@ import java.nio.ByteBuffer;
  */
 
 public class RootDirectory implements IDirectory {
+    private final RootDirectoryDirectoryEntry entry;
+
     private final BlockManager blockManager;
 
-    private RootDirectory(BlockManager blockManager) {
+    private RootDirectory(RootDirectoryDirectoryEntry entry, BlockManager blockManager) {
+        this.entry = entry;
+
         this.blockManager = blockManager;
     }
 
@@ -55,6 +59,6 @@ public class RootDirectory implements IDirectory {
     }
 
     public static RootDirectory open(BlockManager blockManager) throws FileFileSystemException {
-        return new RootDirectory(blockManager);// TODO
+        return new RootDirectory(RootDirectoryDirectoryEntry.open(blockManager), blockManager);
     }
 }
