@@ -328,7 +328,9 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
                                                        IKindChecker checker, IOpener<T> opener)
             throws FileFileSystemException {
 
-        IBlockFile entry = blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead);
+        IBlockFile entry = ErrorHandlingHelper
+                .get(() -> blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead),
+                        "Directory entry block file open error");// TODO
         ByteBuffer entryFixedSizeData = createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, entry,
                 "Directory entry fixed-size data read error");// TODO
 
