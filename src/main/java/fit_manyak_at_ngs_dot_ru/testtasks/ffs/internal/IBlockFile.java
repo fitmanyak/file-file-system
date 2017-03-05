@@ -1,6 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseableFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IComplexFile;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -8,7 +8,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseableFile;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockFile extends ICloseableFile {
+public interface IBlockFile extends IComplexFile {
     public int getBlockChainHead();
 
     public void setCalculatedSize(long newSize);

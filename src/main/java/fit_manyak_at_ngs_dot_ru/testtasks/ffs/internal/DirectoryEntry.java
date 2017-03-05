@@ -2,6 +2,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.INamed;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRemovable;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
@@ -16,7 +18,7 @@ import java.nio.charset.StandardCharsets;
  *         Created on 04.03.2017.
  */
 
-public abstract class DirectoryEntry {
+public abstract class DirectoryEntry implements INamed, IRemovable {
     private static final int FLAGS_SIZE = 4;
     protected static final int FILE_FLAGS = 0;
     protected static final int DIRECTORY_FLAGS = 1;
@@ -105,7 +107,7 @@ public abstract class DirectoryEntry {
         }
 
         private void remove() throws FileFileSystemException {
-            performUpdatedContentDataAction(delegate::remove);
+            delegate.remove();
         }
     }
 
@@ -188,26 +190,12 @@ public abstract class DirectoryEntry {
         IOUtilities.flipBufferAndWrite(source, src -> entry.write(position, src), errorMessage);
     }
 
-    public int getBlockChainHead() {
-        return entry.getBlockChainHead();
-    }
-
-    public abstract boolean isDirectory();
-
-    public ICommonFile getContent() throws FileFileSystemException {
-        if (content == null) {
-            content = ErrorHandlingHelper
-                    .get(() -> new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
-                            "Directory entry content block file open error");// TODO
-        }
-
-        return content;
-    }
-
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public void setName(String newName) throws FileFileSystemException {
         if (!name.equals(newName)) {
             checkNameNotEmpty(newName);
@@ -256,6 +244,36 @@ public abstract class DirectoryEntry {
     private static void fillNewNameData(ByteBuffer newNameData, byte[] nameBytes) {
         newNameData.putShort((short) nameBytes.length);
         newNameData.put(nameBytes);
+    }
+
+    @Override
+    public void remove() throws FileFileSystemException {
+        ErrorHandlingHelper.performAction(this::performRemove, "Directory entry remove error");// TODO
+    }
+
+    private void performRemove() throws FileFileSystemException {
+        getContentInternal().remove();
+        entry.remove();
+    }
+
+    private Content getContentInternal() throws FileFileSystemException {
+        if (content == null) {
+            content = ErrorHandlingHelper
+                    .get(() -> new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
+                            "Directory entry content block file open error");// TODO
+        }
+
+        return content;
+    }
+
+    public int getBlockChainHead() {
+        return entry.getBlockChainHead();
+    }
+
+    public abstract boolean isDirectory();
+
+    public ICommonFile getContent() throws FileFileSystemException {
+        return getContentInternal();
     }
 
     protected static <T extends DirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
