@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  *         Created on 04.03.2017.
  */
 
-public class RootDirectoryDirectoryEntry extends NewDirectoryEntry {
+public class RootDirectoryDirectoryEntry extends DirectoryEntry {
     private static final String NAME = "";
     private static final byte[] NAME_BYTES = new byte[0];
 

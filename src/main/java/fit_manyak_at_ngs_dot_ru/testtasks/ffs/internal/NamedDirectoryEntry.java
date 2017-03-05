@@ -8,7 +8,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IProviderWithAr
  *         Created on 04.03.2017.
  */
 
-public abstract class NamedDirectoryEntry extends NewDirectoryEntry {
+public abstract class NamedDirectoryEntry extends DirectoryEntry {
     protected NamedDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
         super(entry, name, blockManager);
     }

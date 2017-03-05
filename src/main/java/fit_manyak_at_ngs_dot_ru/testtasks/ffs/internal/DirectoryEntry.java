@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
  *         Created on 04.03.2017.
  */
 
-public abstract class NewDirectoryEntry {
+public abstract class DirectoryEntry {
     private static final int FLAGS_SIZE = 4;
     protected static final int FILE_FLAGS = 0;
     protected static final int DIRECTORY_FLAGS = 1;
@@ -120,12 +120,12 @@ public abstract class NewDirectoryEntry {
 
     private final BlockManager blockManager;
 
-    protected NewDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+    protected DirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
         this(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
     }
 
-    protected NewDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                                BlockManager blockManager) {
+    protected DirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                             BlockManager blockManager) {
 
         this.entry = entry;
 
@@ -175,8 +175,8 @@ public abstract class NewDirectoryEntry {
         return name;
     }
 
-    protected static <T extends NewDirectoryEntry> T create(int flags, String name, BlockManager blockManager,
-                                                            IProviderWithArgument<T, IBlockFile> creator)
+    protected static <T extends DirectoryEntry> T create(int flags, String name, BlockManager blockManager,
+                                                         IProviderWithArgument<T, IBlockFile> creator)
             throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
@@ -200,9 +200,9 @@ public abstract class NewDirectoryEntry {
         return FIXED_SIZE_DATA_SIZE + nameSize;
     }
 
-    private static <T extends NewDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
-                                                          IBlockFile entry,
-                                                          IProviderWithArgument<T, IBlockFile> creator)
+    private static <T extends DirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
+                                                       IBlockFile entry,
+                                                       IProviderWithArgument<T, IBlockFile> creator)
             throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
@@ -220,7 +220,7 @@ public abstract class NewDirectoryEntry {
         entryData.put(nameBytes);
     }
 
-    public static NewDirectoryEntry open(int blockChainHead, BlockManager blockManager)
+    public static DirectoryEntry open(int blockChainHead, BlockManager blockManager)
             throws FileFileSystemException {
 
         IBlockFile entry = blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead);
