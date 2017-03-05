@@ -7,4 +7,5 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface ICloseableFile extends ICommonFile, ICloseable {
+    public void remove() throws FileFileSystemException;
 }

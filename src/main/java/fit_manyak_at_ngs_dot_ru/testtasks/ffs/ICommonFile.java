@@ -17,8 +17,6 @@ public interface ICommonFile {
 
     public void reset();
 
-    public void clear() throws FileFileSystemException;
-
     public int read(ByteBuffer destination) throws FileFileSystemException;
     public int read(long newPosition, ByteBuffer destination) throws FileFileSystemException;
 

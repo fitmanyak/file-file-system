@@ -27,7 +27,6 @@ public abstract class DirectoryEntry {
 
     private static final int NAME_SIZE_SIZE = 2;
     private static final int NAME_MAXIMAL_SIZE = (1 << (8 * NAME_SIZE_SIZE)) - 1;
-    private static final short NULL_NAME_SIZE = 0;
 
     private static final int FIXED_SIZE_DATA_SIZE = FLAGS_SIZE + CONTENT_DATA_SIZE + NAME_SIZE_SIZE;
 
@@ -70,11 +69,6 @@ public abstract class DirectoryEntry {
         }
 
         @Override
-        public void clear() throws FileFileSystemException {
-            performUpdatedContentDataAction(delegate::clear);
-        }
-
-        @Override
         public int read(ByteBuffer destination) throws FileFileSystemException {
             return delegate.read(destination);
         }
@@ -107,6 +101,36 @@ public abstract class DirectoryEntry {
         private int getBlockChainHead() {
             return delegate.getBlockChainHead();
         }
+
+        private void remove() throws FileFileSystemException {
+            performUpdatedContentDataAction(delegate::remove);
+        }
+    }
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    protected interface ICreator<T extends DirectoryEntry> {
+        public T create(IBlockFile entry, String name, BlockManager blockManager);
+    }
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    protected interface IKindChecker {
+        public void check(boolean isDirectory) throws FileFileSystemException;
+    }
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    protected interface IOpener<T extends DirectoryEntry> {
+        public T open(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, int nameSize,
+                      BlockManager blockManager) throws FileFileSystemException;
+    }
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    protected interface ICreatorForOpen<T extends DirectoryEntry> {
+        public T create(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, String name,
+                        BlockManager blockManager);
     }
 
     private final IBlockFile entry;
@@ -161,6 +185,8 @@ public abstract class DirectoryEntry {
         return entry.getBlockChainHead();
     }
 
+    public abstract boolean isDirectory();
+
     public ICommonFile getContent() throws FileFileSystemException {
         if (content == null) {
             content = ErrorHandlingHelper
@@ -176,15 +202,14 @@ public abstract class DirectoryEntry {
     }
 
     protected static <T extends DirectoryEntry> T create(int flags, String name, BlockManager blockManager,
-                                                         IProviderWithArgument<T, IBlockFile> creator)
-            throws FileFileSystemException {
+                                                         ICreator<T> creator) throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes.length);
 
         return ErrorHandlingHelper
                 .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry create error",
-                        entry -> create(flags, name, nameBytes, entrySize, entry, creator));// TODO
+                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
     private static byte[] getNameBytes(String name) {
@@ -201,15 +226,14 @@ public abstract class DirectoryEntry {
     }
 
     private static <T extends DirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
-                                                       IBlockFile entry,
-                                                       IProviderWithArgument<T, IBlockFile> creator)
+                                                       IBlockFile entry, BlockManager blockManager, ICreator<T> creator)
             throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
         fillNewEntryData(entryData, flags, nameBytes);
         IOUtilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
 
-        return creator.get(entry);
+        return creator.create(entry, name, blockManager);
     }
 
     protected static void fillNewEntryData(ByteBuffer entryData, int flags, byte[] nameBytes) {
@@ -220,7 +244,19 @@ public abstract class DirectoryEntry {
         entryData.put(nameBytes);
     }
 
-    public static DirectoryEntry open(int blockChainHead, BlockManager blockManager)
+    public static DirectoryEntry openAny(int blockChainHead, BlockManager blockManager) throws FileFileSystemException {
+        return open(blockChainHead, blockManager, DirectoryEntry::checkAny, getOpenerAny());
+    }
+
+    protected static <T extends DirectoryEntry> T openTyped(int blockChainHead, BlockManager blockManager,
+                                                            IKindChecker checker, ICreatorForOpen<T> creator)
+            throws FileFileSystemException {
+
+        return open(blockChainHead, blockManager, checker, getOpener(creator));
+    }
+
+    protected static <T extends DirectoryEntry> T open(int blockChainHead, BlockManager blockManager,
+                                                       IKindChecker checker, IOpener<T> opener)
             throws FileFileSystemException {
 
         IBlockFile entry = blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead);
@@ -234,10 +270,43 @@ public abstract class DirectoryEntry {
             throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_FLAGS_ERROR);
         }
 
+        checker.check(isDirectory);
+
         long contentSize = entryFixedSizeData.getLong();
         int contentBlockChainHead = entryFixedSizeData.getInt();
-
         int nameSize = Short.toUnsignedInt(entryFixedSizeData.getShort());
+
+        return opener.open(entry, isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager);
+    }
+
+    private static ByteBuffer createReadAndFlipBuffer(int size, IBlockFile file, String errorMessage)
+            throws FileFileSystemException {
+
+        return IOUtilities.createReadAndFlipBuffer(size, file::read, errorMessage);
+    }
+
+    private static void checkAny(boolean isDirectory) throws FileFileSystemException {
+    }
+
+    protected static void checkIsDirectory(boolean isDirectory) throws FileFileSystemException {
+        if (!isDirectory) {
+            throw new FileFileSystemException("Directory entry is file directory entry");// TODO
+        }
+    }
+
+    private static IOpener<DirectoryEntry> getOpenerAny() {
+        return getOpener(DirectoryEntry::createForOpenAny);
+    }
+
+    private static <T extends DirectoryEntry> IOpener<T> getOpener(ICreatorForOpen<T> creator) {
+        return (entry, isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager) -> open(entry,
+                isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager, creator);
+    }
+
+    private static <T extends DirectoryEntry> T open(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                     int contentBlockChainHead, int nameSize, BlockManager blockManager,
+                                                     ICreatorForOpen<T> creator) throws FileFileSystemException {
+
         if (nameSize == 0) {
             throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_NAME_ERROR);
         }
@@ -249,13 +318,14 @@ public abstract class DirectoryEntry {
         entryName.get(nameBytes);
         String name = new String(nameBytes, StandardCharsets.UTF_8);
 
-        return isFile ? new FileDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager) :
-                new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
+        return creator.create(entry, isDirectory, contentSize, contentBlockChainHead, name, blockManager);
     }
 
-    private static ByteBuffer createReadAndFlipBuffer(int size, IBlockFile file, String errorMessage)
-            throws FileFileSystemException {
+    private static DirectoryEntry createForOpenAny(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                   int contentBlockChainHead, String name, BlockManager blockManager) {
 
-        return IOUtilities.createReadAndFlipBuffer(size, file::read, errorMessage);
+        return isDirectory ?
+                new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager) :
+                new FileDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 }

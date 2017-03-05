@@ -20,8 +20,7 @@ public abstract class NamedDirectoryEntry extends DirectoryEntry {
     }
 
     protected static <T extends NamedDirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
-                                                                   IProviderWithArgument<T, IBlockFile> creator)
-            throws FileFileSystemException {
+                                                                   ICreator<T> creator) throws FileFileSystemException {
 
         if (name.isEmpty()) {
             throw new IllegalArgumentException("Empty directory entry name");// TODO

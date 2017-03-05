@@ -55,7 +55,7 @@ public class BlockManager implements ICloseable {
 
     public static final int NULL_BLOCK_INDEX = 0;
 
-    private static final int ROOT_DIRECTORY_ENTRY_BLOCK_INDEX = 0;
+    public static final int ROOT_DIRECTORY_ENTRY_BLOCK_INDEX = 0;
     private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
 
     private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
@@ -216,11 +216,6 @@ public class BlockManager implements ICloseable {
         }
 
         @Override
-        public void clear() throws FileFileSystemException {
-            setSize(0L);
-        }
-
-        @Override
         public int read(ByteBuffer destination) throws FileFileSystemException {
             if (destination.isReadOnly()) {
                 throw new IllegalArgumentException("Read-only buffer");// TODO
@@ -304,7 +299,12 @@ public class BlockManager implements ICloseable {
 
         @Override
         public void close() throws FileFileSystemException {
-            clear();
+            remove();
+        }
+
+        @Override
+        public void remove() throws FileFileSystemException {
+            setSize(0L);
         }
 
         @Override

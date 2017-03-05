@@ -18,10 +18,28 @@ public class DirectoryDirectoryEntry extends NamedDirectoryEntry {
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 
+    @Override
+    public boolean isDirectory() {
+        return true;
+    }
+
     public static DirectoryDirectoryEntry create(String name, BlockManager blockManager)
             throws FileFileSystemException {
 
-        return createNamed(DIRECTORY_FLAGS, name, blockManager,
-                entry -> new DirectoryDirectoryEntry(entry, name, blockManager));
+        return createNamed(DIRECTORY_FLAGS, name, blockManager, DirectoryDirectoryEntry::new);
+    }
+
+    public static DirectoryDirectoryEntry open(int blockChainHead, BlockManager blockManager)
+            throws FileFileSystemException {
+
+        return openTyped(blockChainHead, blockManager, DirectoryEntry::checkIsDirectory,
+                DirectoryDirectoryEntry::createForOpen);
+    }
+
+    private static DirectoryDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                         int contentBlockChainHead, String name,
+                                                         BlockManager blockManager) {
+
+        return new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 }

@@ -1,5 +1,8 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -17,11 +20,28 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry {
         super(entry, contentSize, contentBlockChainHead, NAME, blockManager);
     }
 
+    @Override
+    public boolean isDirectory() {
+        return true;
+    }
+
     public static void format(ByteBuffer block) {
         fillNewEntryData(block, DIRECTORY_FLAGS, NAME_BYTES);
     }
 
-    public static RootDirectoryDirectoryEntry open(BlockManager blockManager) {
-        return null;// TODO
+    public static RootDirectoryDirectoryEntry open(BlockManager blockManager) throws FileFileSystemException {
+        return open(BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, blockManager, DirectoryEntry::checkIsDirectory,
+                RootDirectoryDirectoryEntry::open);
+    }
+
+    private static RootDirectoryDirectoryEntry open(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                    int contentBlockChainHead, int nameSize, BlockManager blockManager)
+            throws FileFileSystemException {
+
+        if (nameSize != 0) {
+            throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR);
+        }
+
+        return new RootDirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, blockManager);
     }
 }
