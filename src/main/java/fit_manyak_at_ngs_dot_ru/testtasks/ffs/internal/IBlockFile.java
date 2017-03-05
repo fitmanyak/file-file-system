@@ -1,8 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
-
-import java.io.Closeable;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseableFile;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -10,7 +8,7 @@ import java.io.Closeable;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockFile extends ICommonFile, Closeable {
+public interface IBlockFile extends ICloseableFile {
     public int getBlockChainHead();
 
     public void setCalculatedSize(long newSize);

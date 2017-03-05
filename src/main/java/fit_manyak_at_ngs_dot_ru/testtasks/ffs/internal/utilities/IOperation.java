@@ -1,6 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities;
 
-import java.io.IOException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -10,6 +11,6 @@ import java.nio.ByteBuffer;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
-public interface INoReturnValueIOOperation {
-    public void perform(ByteBuffer buffer) throws IOException, IllegalArgumentException;
+public interface IOperation extends ICommonOperation {
+    public int perform(ByteBuffer buffer) throws FileFileSystemException;
 }

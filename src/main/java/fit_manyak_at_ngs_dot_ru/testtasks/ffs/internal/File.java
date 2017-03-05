@@ -1,8 +1,8 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -12,16 +12,16 @@ import java.nio.ByteBuffer;
 
 public class File implements IFile {
     @Override
-    public void close() throws IOException {
+    public void close() throws FileFileSystemException {
     }
 
     @Override
-    public int read(ByteBuffer buffer) throws IOException, IllegalArgumentException {
+    public int read(ByteBuffer buffer) throws FileFileSystemException {
         return 0;
     }
 
     @Override
-    public int write(ByteBuffer buffer) throws IOException, IllegalArgumentException {
+    public int write(ByteBuffer buffer) throws FileFileSystemException {
         return 0;
     }
 }

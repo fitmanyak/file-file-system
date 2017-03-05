@@ -9,6 +9,6 @@ import java.io.IOException;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
-public interface IIOAction {
-    public void perform() throws IOException, IllegalArgumentException;
+public interface ICommonAction {
+    public void perform() throws IOException;
 }

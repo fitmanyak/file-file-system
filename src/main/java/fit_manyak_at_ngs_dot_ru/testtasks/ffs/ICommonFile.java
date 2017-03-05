@@ -1,6 +1,5 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -11,18 +10,18 @@ import java.nio.ByteBuffer;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface ICommonFile {
     public long getSize();
-    public void setSize(long newSize) throws IOException, IllegalArgumentException;
+    public void setSize(long newSize) throws FileFileSystemException;
 
     public long getPosition();
-    public void setPosition(long newPosition) throws IOException, IllegalArgumentException;
+    public void setPosition(long newPosition) throws FileFileSystemException;
 
     public void reset();
 
-    public void clear() throws IOException, IllegalArgumentException;
+    public void clear() throws FileFileSystemException;
 
-    public int read(ByteBuffer destination) throws IOException, IllegalArgumentException;
-    public int read(long newPosition, ByteBuffer destination) throws IOException, IllegalArgumentException;
+    public int read(ByteBuffer destination) throws FileFileSystemException;
+    public int read(long newPosition, ByteBuffer destination) throws FileFileSystemException;
 
-    public int write(ByteBuffer source) throws IOException, IllegalArgumentException;
-    public int write(long newPosition, ByteBuffer source) throws IOException, IllegalArgumentException;
+    public int write(ByteBuffer source) throws FileFileSystemException;
+    public int write(long newPosition, ByteBuffer source) throws FileFileSystemException;
 }

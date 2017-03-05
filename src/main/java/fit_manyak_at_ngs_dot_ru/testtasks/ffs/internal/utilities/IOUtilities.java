@@ -2,7 +2,6 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -11,42 +10,33 @@ import java.nio.ByteBuffer;
  */
 
 public class IOUtilities {
+    public static void readAndFlipBuffer(ByteBuffer destination, IActionWithArgument<ByteBuffer> readAction)
+            throws FileFileSystemException {
 
-    public static void readAndFlipBuffer(ByteBuffer destination, INoReturnValueIOOperation readOperation)
-            throws IOException, IllegalArgumentException {
-
-        readOperation.perform(destination);
+        readAction.perform(destination);
 
         destination.flip();
     }
 
-    public static void readAndFlipBuffer(ByteBuffer destination, INoReturnValueIOOperation readOperation,
+    public static void readAndFlipBuffer(ByteBuffer destination, IActionWithArgument<ByteBuffer> readAction,
                                          String errorMessage) throws FileFileSystemException {
 
-        performIOAction(() -> readAndFlipBuffer(destination, readOperation), errorMessage);
+        ErrorHandlingHelper.performAction(() -> readAndFlipBuffer(destination, readAction), errorMessage);
     }
 
-    public static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation)
-            throws IOException, IllegalArgumentException {
+    public static void flipBufferAndWrite(ByteBuffer source, IActionWithArgument<ByteBuffer> writeAction)
+            throws FileFileSystemException {
 
         source.flip();
 
-        writeOperation.perform(source);
+        writeAction.perform(source);
 
         source.clear();
     }
 
-    public static void flipBufferAndWrite(ByteBuffer source, INoReturnValueIOOperation writeOperation,
+    public static void flipBufferAndWrite(ByteBuffer source, IActionWithArgument<ByteBuffer> writeAction,
                                           String errorMessage) throws FileFileSystemException {
 
-        performIOAction(() -> flipBufferAndWrite(source, writeOperation), errorMessage);
-    }
-
-    public static void performIOAction(IIOAction action, String errorMessage) throws FileFileSystemException {
-        try {
-            action.perform();
-        } catch (Throwable t) {
-            throw new FileFileSystemException(errorMessage, t);
-        }
+        ErrorHandlingHelper.performAction(() -> flipBufferAndWrite(source, writeAction), errorMessage);
     }
 }

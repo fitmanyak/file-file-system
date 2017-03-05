@@ -1,6 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import java.io.IOException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -14,8 +14,7 @@ public class DirectoryDirectoryEntry extends NamedDirectoryEntry {
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 
-    public static DirectoryDirectoryEntry create(String name, BlockManager blockManager)
-            throws IOException, IllegalArgumentException {
+    public static DirectoryDirectoryEntry create(String name, BlockManager blockManager) throws FileFileSystemException {
 
         return createNamed(DIRECTORY_FLAGS, name, blockManager, DirectoryDirectoryEntry::new);
     }

@@ -1,9 +1,9 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -19,11 +19,11 @@ public class RootDirectory implements IDirectory {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws FileFileSystemException {
     }
 
     @Override
-    public IFile createFile(String name) throws IOException, IllegalArgumentException {
+    public IFile createFile(String name) throws FileFileSystemException {
         /*long contentSize = entry.getContentSize();
         long newContentSize = contentSize + BlockManager.BLOCK_INDEX_SIZE;
         int contentBlockChainHead = entry.getContentBlockChainHead();
@@ -46,7 +46,7 @@ public class RootDirectory implements IDirectory {
     }
 
     @Override
-    public IFile openFile(String name) throws IOException, IllegalArgumentException {
+    public IFile openFile(String name) throws FileFileSystemException {
         return null;
     }
 
@@ -54,7 +54,7 @@ public class RootDirectory implements IDirectory {
         RootDirectoryDirectoryEntry.format(block);
     }
 
-    public static RootDirectory open(BlockManager blockManager) throws IOException, IllegalArgumentException {
+    public static RootDirectory open(BlockManager blockManager) throws FileFileSystemException {
         return new RootDirectory(blockManager);// TODO
     }
 }

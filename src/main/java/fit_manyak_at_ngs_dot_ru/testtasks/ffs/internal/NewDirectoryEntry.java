@@ -3,12 +3,11 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Creator;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOAction;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IIOOperation;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
@@ -44,11 +43,11 @@ public abstract class NewDirectoryEntry {
         }
 
         @Override
-        public void setSize(long newSize) throws IOException, IllegalArgumentException {
-            performUpdatedContentDataIOAction(() -> delegate.setSize(newSize));
+        public void setSize(long newSize) throws FileFileSystemException {
+            performUpdatedContentDataAction(() -> delegate.setSize(newSize));
         }
 
-        private void performUpdatedContentDataIOAction(IIOAction action) throws IOException, IllegalArgumentException {
+        private void performUpdatedContentDataAction(IAction action) throws FileFileSystemException {
             action.perform();
 
             updateContentData();
@@ -60,7 +59,7 @@ public abstract class NewDirectoryEntry {
         }
 
         @Override
-        public void setPosition(long newPosition) throws IOException, IllegalArgumentException {
+        public void setPosition(long newPosition) throws FileFileSystemException {
             delegate.setPosition(newPosition);
         }
 
@@ -70,27 +69,27 @@ public abstract class NewDirectoryEntry {
         }
 
         @Override
-        public void clear() throws IOException, IllegalArgumentException {
-            performUpdatedContentDataIOAction(delegate::clear);
+        public void clear() throws FileFileSystemException {
+            performUpdatedContentDataAction(delegate::clear);
         }
 
         @Override
-        public int read(ByteBuffer destination) throws IOException, IllegalArgumentException {
+        public int read(ByteBuffer destination) throws FileFileSystemException {
             return delegate.read(destination);
         }
 
         @Override
-        public int read(long newPosition, ByteBuffer destination) throws IOException, IllegalArgumentException {
+        public int read(long newPosition, ByteBuffer destination) throws FileFileSystemException {
             return delegate.read(newPosition, destination);
         }
 
         @Override
-        public int write(ByteBuffer source) throws IOException, IllegalArgumentException {
-            return performUpdatedContentDataIOOperation(source, delegate::write);
+        public int write(ByteBuffer source) throws FileFileSystemException {
+            return performUpdatedContentDataOperation(source, delegate::write);
         }
 
-        private int performUpdatedContentDataIOOperation(ByteBuffer buffer, IIOOperation operation)
-                throws IOException, IllegalArgumentException {
+        private int performUpdatedContentDataOperation(ByteBuffer buffer, IOperation operation)
+                throws FileFileSystemException {
 
             int result = operation.perform(buffer);
 
@@ -100,8 +99,8 @@ public abstract class NewDirectoryEntry {
         }
 
         @Override
-        public int write(long newPosition, ByteBuffer source) throws IOException, IllegalArgumentException {
-            return performUpdatedContentDataIOOperation(source, src -> delegate.write(newPosition, src));
+        public int write(long newPosition, ByteBuffer source) throws FileFileSystemException {
+            return performUpdatedContentDataOperation(source, src -> delegate.write(newPosition, src));
         }
 
         private int getBlockChainHead() {
@@ -166,7 +165,7 @@ public abstract class NewDirectoryEntry {
 
     public ICommonFile getContent() throws FileFileSystemException {
         if (content == null) {
-            IOUtilities.performIOAction(
+            ErrorHandlingHelper.performAction(
                     () -> content = new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
                     "Directory entry content block file open error");// TODO
         }
@@ -180,17 +179,17 @@ public abstract class NewDirectoryEntry {
 
     protected static <T extends NewDirectoryEntry> T create(int flags, String name, BlockManager blockManager,
                                                             ICreator<T> creator)
-            throws IOException, IllegalArgumentException {
+            throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes.length);
 
-        return Creator.createWithCloseableArgument(
-                () -> Creator.create(() -> blockManager.createBlockFile(entrySize), "Directory entry create error"),
-                entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
+        return ErrorHandlingHelper
+                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry get error",
+                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
-    private static byte[] getNameBytes(String name) throws IllegalArgumentException {
+    private static byte[] getNameBytes(String name) {
         byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
         if (nameBytes.length > NAME_MAXIMAL_SIZE) {
             throw new IllegalArgumentException("Too long directory entry name");// TODO
@@ -224,7 +223,7 @@ public abstract class NewDirectoryEntry {
     }
 
     public static NewDirectoryEntry open(int blockChainHead, BlockManager blockManager)
-            throws IOException, IllegalArgumentException {
+            throws FileFileSystemException {
 
         IBlockFile entry = blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead);
         ByteBuffer entryFixedSizeData = createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, entry,

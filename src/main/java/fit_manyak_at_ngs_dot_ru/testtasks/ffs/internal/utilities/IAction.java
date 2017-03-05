@@ -1,6 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities;
 
-import java.io.IOException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -9,6 +9,6 @@ import java.io.IOException;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
-public interface ICreator<T> {
-    public T create() throws IOException, IllegalArgumentException;
+public interface IAction extends ICommonAction {
+    public void perform() throws FileFileSystemException;
 }

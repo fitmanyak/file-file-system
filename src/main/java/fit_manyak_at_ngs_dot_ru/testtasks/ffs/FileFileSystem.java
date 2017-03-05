@@ -2,10 +2,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.BlockManager;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.RootDirectory;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.Creator;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.nio.file.Path;
 
 /**
@@ -13,7 +11,7 @@ import java.nio.file.Path;
  *         Created on 19.02.2017.
  */
 
-public class FileFileSystem implements Closeable {
+public class FileFileSystem implements ICloseable {
     private final RootDirectory rootDirectory;
 
     private final BlockManager blockManager;
@@ -25,7 +23,7 @@ public class FileFileSystem implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws FileFileSystemException {
         blockManager.close();
     }
 
@@ -33,15 +31,15 @@ public class FileFileSystem implements Closeable {
         return rootDirectory;
     }
 
-    public static void format(Path path, long size) throws IOException, IllegalArgumentException {
+    public static void format(Path path, long size) throws FileFileSystemException {
         BlockManager.format(path, size, RootDirectory::format);
     }
 
-    public static FileFileSystem mount(Path path) throws IOException, IllegalArgumentException {
-        return Creator.createWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
+    public static FileFileSystem mount(Path path) throws FileFileSystemException {
+        return ErrorHandlingHelper.getWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
     }
 
-    private static FileFileSystem mount(BlockManager blockManager) throws IOException, IllegalArgumentException {
+    private static FileFileSystem mount(BlockManager blockManager) throws FileFileSystemException {
         return new FileFileSystem(RootDirectory.open(blockManager), blockManager);
     }
 }
