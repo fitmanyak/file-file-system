@@ -255,9 +255,7 @@ public abstract class NewDirectoryEntry {
 
     private static ByteBuffer createReadAndFlipBuffer(int size, IBlockFile file, String errorMessage)
             throws FileFileSystemException {
-        ByteBuffer destination = ByteBuffer.allocateDirect(size);
-        IOUtilities.readAndFlipBuffer(destination, file::read, errorMessage);
 
-        return destination;
+        return IOUtilities.createReadAndFlipBuffer(size, file::read, errorMessage);
     }
 }

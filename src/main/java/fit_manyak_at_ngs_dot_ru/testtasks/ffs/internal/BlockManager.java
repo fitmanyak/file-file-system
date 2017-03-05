@@ -735,9 +735,6 @@ public class BlockManager implements ICloseable {
     private static ByteBuffer createReadAndFlipBuffer(int size, FileChannel channel, String errorMessage)
             throws FileFileSystemException {
 
-        ByteBuffer destination = ByteBuffer.allocateDirect(size);
-        IOUtilities.readAndFlipBuffer(destination, dst -> performOperation(dst, channel::read, errorMessage));
-
-        return destination;
+        return IOUtilities.createReadAndFlipBuffer(size, dst -> performOperation(dst, channel::read, errorMessage));
     }
 }

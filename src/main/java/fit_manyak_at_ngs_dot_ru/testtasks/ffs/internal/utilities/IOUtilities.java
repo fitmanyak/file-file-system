@@ -18,10 +18,19 @@ public class IOUtilities {
         destination.flip();
     }
 
-    public static void readAndFlipBuffer(ByteBuffer destination, IActionWithArgument<ByteBuffer> readAction,
-                                         String errorMessage) throws FileFileSystemException {
+    public static ByteBuffer createReadAndFlipBuffer(int size, IActionWithArgument<ByteBuffer> readAction)
+            throws FileFileSystemException {
 
-        ErrorHandlingHelper.performAction(() -> readAndFlipBuffer(destination, readAction), errorMessage);
+        ByteBuffer destination = ByteBuffer.allocateDirect(size);
+        readAndFlipBuffer(destination, readAction);
+
+        return destination;
+    }
+
+    public static ByteBuffer createReadAndFlipBuffer(int size, IActionWithArgument<ByteBuffer> readAction,
+                                                     String errorMessage) throws FileFileSystemException {
+
+        return ErrorHandlingHelper.get(() -> createReadAndFlipBuffer(size, readAction), errorMessage);
     }
 
     public static void flipBufferAndWrite(ByteBuffer source, IActionWithArgument<ByteBuffer> writeAction)
