@@ -8,13 +8,17 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  */
 
 public class FileDirectoryEntry extends NamedDirectoryEntry {
+    private FileDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+        super(entry, name, blockManager);
+    }
+
     protected FileDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                               BlockManager blockManager) {
+                                 BlockManager blockManager) {
 
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
 
     public static FileDirectoryEntry create(String name, BlockManager blockManager) throws FileFileSystemException {
-        return createNamed(FILE_FLAGS, name, blockManager, FileDirectoryEntry::new);
+        return createNamed(FILE_FLAGS, name, blockManager, entry -> new FileDirectoryEntry(entry, name, blockManager));
     }
 }

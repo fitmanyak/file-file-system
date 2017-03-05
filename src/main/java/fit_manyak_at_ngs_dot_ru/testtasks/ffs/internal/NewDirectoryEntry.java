@@ -5,8 +5,9 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IProviderWithArgument;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -108,13 +109,6 @@ public abstract class NewDirectoryEntry {
         }
     }
 
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    protected interface ICreator<T extends NewDirectoryEntry> {
-        public T create(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                        BlockManager blockManager);
-    }
-
     private final IBlockFile entry;
 
     private Content content;
@@ -125,6 +119,10 @@ public abstract class NewDirectoryEntry {
     private final String name;
 
     private final BlockManager blockManager;
+
+    protected NewDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+        this(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
+    }
 
     protected NewDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
                                 BlockManager blockManager) {
@@ -165,9 +163,9 @@ public abstract class NewDirectoryEntry {
 
     public ICommonFile getContent() throws FileFileSystemException {
         if (content == null) {
-            ErrorHandlingHelper.performAction(
-                    () -> content = new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
-                    "Directory entry content block file open error");// TODO
+            content = ErrorHandlingHelper
+                    .get(() -> new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
+                            "Directory entry content block file open error");// TODO
         }
 
         return content;
@@ -178,15 +176,15 @@ public abstract class NewDirectoryEntry {
     }
 
     protected static <T extends NewDirectoryEntry> T create(int flags, String name, BlockManager blockManager,
-                                                            ICreator<T> creator)
+                                                            IProviderWithArgument<T, IBlockFile> creator)
             throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes.length);
 
         return ErrorHandlingHelper
-                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry get error",
-                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
+                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry create error",
+                        entry -> create(flags, name, nameBytes, entrySize, entry, creator));// TODO
     }
 
     private static byte[] getNameBytes(String name) {
@@ -203,15 +201,15 @@ public abstract class NewDirectoryEntry {
     }
 
     private static <T extends NewDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
-                                                          IBlockFile entry, BlockManager blockManager,
-                                                          ICreator<T> creator)
+                                                          IBlockFile entry,
+                                                          IProviderWithArgument<T, IBlockFile> creator)
             throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
         fillNewEntryData(entryData, flags, nameBytes);
         IOUtilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
 
-        return creator.create(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
+        return creator.get(entry);
     }
 
     protected static void fillNewEntryData(ByteBuffer entryData, int flags, byte[] nameBytes) {

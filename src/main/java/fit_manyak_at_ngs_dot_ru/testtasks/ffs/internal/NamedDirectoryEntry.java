@@ -1,6 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IProviderWithArgument;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -8,6 +9,10 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  */
 
 public abstract class NamedDirectoryEntry extends NewDirectoryEntry {
+    protected NamedDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+        super(entry, name, blockManager);
+    }
+
     protected NamedDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
                                   BlockManager blockManager) {
 
@@ -15,7 +20,7 @@ public abstract class NamedDirectoryEntry extends NewDirectoryEntry {
     }
 
     protected static <T extends NamedDirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
-                                                                   ICreator<T> creator)
+                                                                   IProviderWithArgument<T, IBlockFile> creator)
             throws FileFileSystemException {
 
         if (name.isEmpty()) {
