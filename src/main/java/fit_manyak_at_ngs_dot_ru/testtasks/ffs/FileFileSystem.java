@@ -1,6 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.BlockManager;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.IBlockManager;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.RootDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 
@@ -11,12 +12,12 @@ import java.nio.file.Path;
  *         Created on 19.02.2017.
  */
 
-public class FileFileSystem implements ICloseable {
-    private final RootDirectory rootDirectory;
+public class FileFileSystem implements IFileFileSystem {
+    private final IRootDirectory rootDirectory;
 
-    private final BlockManager blockManager;
+    private final IBlockManager blockManager;
 
-    private FileFileSystem(RootDirectory rootDirectory, BlockManager blockManager) {
+    private FileFileSystem(IRootDirectory rootDirectory, IBlockManager blockManager) {
         this.rootDirectory = rootDirectory;
 
         this.blockManager = blockManager;
@@ -27,7 +28,8 @@ public class FileFileSystem implements ICloseable {
         blockManager.close();
     }
 
-    public IDirectory getRootDirectory() {
+    @Override
+    public IRootDirectory getRootDirectory() {
         return rootDirectory;
     }
 
@@ -35,11 +37,11 @@ public class FileFileSystem implements ICloseable {
         BlockManager.format(path, size, RootDirectory::format);
     }
 
-    public static FileFileSystem mount(Path path) throws FileFileSystemException {
+    public static IFileFileSystem mount(Path path) throws FileFileSystemException {
         return ErrorHandlingHelper.getWithCloseableArgument(() -> BlockManager.mount(path), FileFileSystem::mount);
     }
 
-    private static FileFileSystem mount(BlockManager blockManager) throws FileFileSystemException {
+    private static IFileFileSystem mount(IBlockManager blockManager) throws FileFileSystemException {
         return new FileFileSystem(RootDirectory.open(blockManager), blockManager);
     }
 }

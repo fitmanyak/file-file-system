@@ -1,12 +1,11 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseable;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ICommonOperation;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
 
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -20,23 +19,21 @@ import java.util.function.Consumer;
  *         Created on 26.02.2017.
  */
 
-public class BlockManager implements ICloseable {
+public class BlockManager implements IBlockManager {
     private static final int SIGNATURE_SIZE = 2;
     private static final short SIGNATURE = (short) 0xFFF5;
 
     private static final int BLOCK_SIZE_RATIO_SIZE = 1;
     private static final byte BLOCK_SIZE_RATIO = 0;
-    public static final int BLOCK_SIZE = 512;
+    private static final int BLOCK_SIZE = 512;
     private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
     private static final int BLOCK_SIZE_EXPONENT = 9;
 
     private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
     private static final byte BLOCK_INDEX_SIZE_EXPONENT = 0;
-    public static final int BLOCK_INDEX_SIZE = 4;
 
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
     private static final byte CONTENT_SIZE_SIZE_EXPONENT = 0;
-    public static final int CONTENT_SIZE_SIZE = 8;
 
     private static final int SIGNATURE_AND_GEOMETRY_SIZE =
             SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
@@ -58,9 +55,6 @@ public class BlockManager implements ICloseable {
 
     private static final long MAXIMAL_BLOCK_FILE_SIZE = MAXIMAL_BLOCK_COUNT * BLOCK_SIZE;
 
-    public static final int NULL_BLOCK_INDEX = 0;
-
-    public static final int ROOT_DIRECTORY_ENTRY_BLOCK_INDEX = 0;
     private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
 
     private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
@@ -317,6 +311,11 @@ public class BlockManager implements ICloseable {
         }
 
         @Override
+        public boolean isEmpty() {
+            return getSize() == 0L;
+        }
+
+        @Override
         public void setCalculatedSize(long newSize) {
             size = newSize;
             blockChainLength = getRequiredBlockCount(size);
@@ -561,6 +560,7 @@ public class BlockManager implements ICloseable {
         write(getAbsolutePosition(blockIndex, withinBlockPosition), source, "Block write error");// TODO
     }
 
+    @Override
     public IBlockFile createBlockFile(long size) throws FileFileSystemException {
         IBlockFile file = new BlockFile();
         file.setSize(size);
@@ -568,10 +568,12 @@ public class BlockManager implements ICloseable {
         return file;
     }
 
+    @Override
     public IBlockFile openBlockFile(long size, int blockChainHead) throws FileFileSystemException {
         return openBlockFile(size, blockChainHead, false);
     }
 
+    @Override
     public IBlockFile openBlockFile(long size, int blockChainHead, boolean skipCheckBlockChainHead)
             throws FileFileSystemException {
 
@@ -680,13 +682,13 @@ public class BlockManager implements ICloseable {
         flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
     }
 
-    public static BlockManager mount(Path path) throws FileFileSystemException {
+    public static IBlockManager mount(Path path) throws FileFileSystemException {
         return ErrorHandlingHelper.getWithCloseableArgument(
                 () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
                 "File channel open error", BlockManager::mount);// TODO
     }
 
-    private static BlockManager mount(FileChannel channel) throws FileFileSystemException {
+    private static IBlockManager mount(FileChannel channel) throws FileFileSystemException {
         ByteBuffer fixedSizeData =
                 createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
         if (fixedSizeData.getShort() != SIGNATURE) {

@@ -2,6 +2,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.test;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFileFileSystem;
 import org.junit.Test;
 
 import java.nio.file.Path;
@@ -21,7 +22,7 @@ public class FileFileSystemTest {
         Path testPath = Paths.get(TEST_PATH);
         FileFileSystem.format(testPath, TEST_SIZE);
 
-        try (FileFileSystem fileFileSystem = FileFileSystem.mount(testPath)) {
+        try (IFileFileSystem fileFileSystem = FileFileSystem.mount(testPath)) {
         }
     }
 }

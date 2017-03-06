@@ -8,7 +8,6 @@ import java.io.Closeable;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-@FunctionalInterface
 public interface ICloseable extends Closeable {
     public void close() throws FileFileSystemException;
 }

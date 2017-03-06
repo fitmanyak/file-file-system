@@ -8,8 +8,8 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IComplexFile;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockFile extends IComplexFile {
-    public int getBlockChainHead();
+public interface IBlockFile extends IComplexFile, IBlockChainBased {
+    public boolean isEmpty();
 
     public void setCalculatedSize(long newSize);
 }

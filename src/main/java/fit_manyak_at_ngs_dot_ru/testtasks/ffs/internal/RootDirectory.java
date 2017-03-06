@@ -1,8 +1,8 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRootDirectory;
 
 import java.nio.ByteBuffer;
 
@@ -11,12 +11,12 @@ import java.nio.ByteBuffer;
  *         Created on 26.02.2017.
  */
 
-public class RootDirectory implements IDirectory {
-    private final RootDirectoryDirectoryEntry entry;
+public class RootDirectory implements IRootDirectory {
+    private final IRootDirectoryDirectoryEntry entry;
 
-    private final BlockManager blockManager;
+    private final IBlockManager blockManager;
 
-    private RootDirectory(RootDirectoryDirectoryEntry entry, BlockManager blockManager) {
+    private RootDirectory(IRootDirectoryDirectoryEntry entry, IBlockManager blockManager) {
         this.entry = entry;
 
         this.blockManager = blockManager;
@@ -58,7 +58,7 @@ public class RootDirectory implements IDirectory {
         RootDirectoryDirectoryEntry.format(block);
     }
 
-    public static RootDirectory open(BlockManager blockManager) throws FileFileSystemException {
+    public static IRootDirectory open(IBlockManager blockManager) throws FileFileSystemException {
         return new RootDirectory(RootDirectoryDirectoryEntry.open(blockManager), blockManager);
     }
 }

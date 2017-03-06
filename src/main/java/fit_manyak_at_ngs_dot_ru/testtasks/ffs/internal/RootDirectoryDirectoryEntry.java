@@ -10,12 +10,12 @@ import java.nio.ByteBuffer;
  *         Created on 04.03.2017.
  */
 
-public class RootDirectoryDirectoryEntry extends DirectoryEntry {
+public class RootDirectoryDirectoryEntry extends DirectoryEntry implements IRootDirectoryDirectoryEntry {
     private static final String NAME = "";
     private static final byte[] NAME_BYTES = new byte[0];
 
     private RootDirectoryDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead,
-                                        BlockManager blockManager) {
+                                        IBlockManager blockManager) {
 
         super(entry, contentSize, contentBlockChainHead, NAME, blockManager);
     }
@@ -34,13 +34,13 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry {
         fillNewEntryData(block, DIRECTORY_FLAGS, NAME_BYTES);
     }
 
-    public static RootDirectoryDirectoryEntry open(BlockManager blockManager) throws FileFileSystemException {
-        return open(BlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, true, blockManager, DirectoryEntry::checkIsDirectory,
-                RootDirectoryDirectoryEntry::open);
+    public static IRootDirectoryDirectoryEntry open(IBlockManager blockManager) throws FileFileSystemException {
+        return open(IBlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, true, blockManager,
+                DirectoryEntry::checkIsDirectory, RootDirectoryDirectoryEntry::open);
     }
 
-    private static RootDirectoryDirectoryEntry open(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                    int contentBlockChainHead, int nameSize, BlockManager blockManager)
+    private static IRootDirectoryDirectoryEntry open(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                    int contentBlockChainHead, int nameSize, IBlockManager blockManager)
             throws FileFileSystemException {
 
         if (nameSize != 0) {

@@ -7,13 +7,13 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  *         Created on 04.03.2017.
  */
 
-public class DirectoryDirectoryEntry extends DirectoryEntry {
-    private DirectoryDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+public class DirectoryDirectoryEntry extends DirectoryEntry implements IDirectoryDirectoryEntry {
+    private DirectoryDirectoryEntry(IBlockFile entry, String name, IBlockManager blockManager) {
         super(entry, name, blockManager);
     }
 
     protected DirectoryDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                                      BlockManager blockManager) {
+                                      IBlockManager blockManager) {
 
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
@@ -23,22 +23,22 @@ public class DirectoryDirectoryEntry extends DirectoryEntry {
         return true;
     }
 
-    public static DirectoryDirectoryEntry create(String name, BlockManager blockManager)
+    public static IDirectoryDirectoryEntry create(String name, IBlockManager blockManager)
             throws FileFileSystemException {
 
         return createNamed(DIRECTORY_FLAGS, name, blockManager, DirectoryDirectoryEntry::new);
     }
 
-    public static DirectoryDirectoryEntry open(int blockChainHead, BlockManager blockManager)
+    public static IDirectoryDirectoryEntry open(int blockChainHead, IBlockManager blockManager)
             throws FileFileSystemException {
 
         return openTyped(blockChainHead, blockManager, DirectoryEntry::checkIsDirectory,
                 DirectoryDirectoryEntry::createForOpen);
     }
 
-    private static DirectoryDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
+    private static IDirectoryDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
                                                          int contentBlockChainHead, String name,
-                                                         BlockManager blockManager) {
+                                                         IBlockManager blockManager) {
 
         return new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
     }

@@ -7,13 +7,13 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  *         Created on 04.03.2017.
  */
 
-public class FileDirectoryEntry extends DirectoryEntry {
-    private FileDirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
+public class FileDirectoryEntry extends DirectoryEntry implements IFileDirectoryEntry {
+    private FileDirectoryEntry(IBlockFile entry, String name, IBlockManager blockManager) {
         super(entry, name, blockManager);
     }
 
     protected FileDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                                 BlockManager blockManager) {
+                                 IBlockManager blockManager) {
 
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }
@@ -23,11 +23,11 @@ public class FileDirectoryEntry extends DirectoryEntry {
         return false;
     }
 
-    public static FileDirectoryEntry create(String name, BlockManager blockManager) throws FileFileSystemException {
+    public static IFileDirectoryEntry create(String name, IBlockManager blockManager) throws FileFileSystemException {
         return createNamed(FILE_FLAGS, name, blockManager, FileDirectoryEntry::new);
     }
 
-    public static FileDirectoryEntry open(int blockChainHead, BlockManager blockManager)
+    public static IFileDirectoryEntry open(int blockChainHead, IBlockManager blockManager)
             throws FileFileSystemException {
 
         return openTyped(blockChainHead, blockManager, FileDirectoryEntry::checkIsFile,
@@ -40,8 +40,9 @@ public class FileDirectoryEntry extends DirectoryEntry {
         }
     }
 
-    private static FileDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                    int contentBlockChainHead, String name, BlockManager blockManager) {
+    private static IFileDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                    int contentBlockChainHead, String name,
+                                                    IBlockManager blockManager) {
 
         return new FileDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
     }

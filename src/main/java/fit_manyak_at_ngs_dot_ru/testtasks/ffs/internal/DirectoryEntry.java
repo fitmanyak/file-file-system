@@ -2,8 +2,6 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.INamed;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRemovable;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
@@ -18,12 +16,12 @@ import java.nio.charset.StandardCharsets;
  *         Created on 04.03.2017.
  */
 
-public abstract class DirectoryEntry implements INamed, IRemovable {
+public abstract class DirectoryEntry implements IDirectoryEntry {
     private static final int FLAGS_SIZE = 4;
     protected static final int FILE_FLAGS = 0;
     protected static final int DIRECTORY_FLAGS = 1;
 
-    private static final int CONTENT_DATA_SIZE = BlockManager.CONTENT_SIZE_SIZE + BlockManager.BLOCK_INDEX_SIZE;
+    private static final int CONTENT_DATA_SIZE = IBlockManager.CONTENT_SIZE_SIZE + IBlockManager.BLOCK_INDEX_SIZE;
     private static final long CONTENT_DATA_POSITION = FLAGS_SIZE;
 
     private static final int NAME_SIZE_SIZE = 2;
@@ -109,12 +107,16 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         private void remove() throws FileFileSystemException {
             delegate.remove();
         }
+
+        private boolean isEmpty() {
+            return delegate.isEmpty();
+        }
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface ICreator<T extends DirectoryEntry> {
-        public T create(IBlockFile entry, String name, BlockManager blockManager);
+    protected interface ICreator<T extends IDirectoryEntry> {
+        public T create(IBlockFile entry, String name, IBlockManager blockManager);
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
@@ -125,16 +127,16 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface IOpener<T extends DirectoryEntry> {
+    protected interface IOpener<T extends IDirectoryEntry> {
         public T open(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, int nameSize,
-                      BlockManager blockManager) throws FileFileSystemException;
+                      IBlockManager blockManager) throws FileFileSystemException;
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface ICreatorForOpen<T extends DirectoryEntry> {
+    protected interface ICreatorForOpen<T extends IDirectoryEntry> {
         public T create(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, String name,
-                        BlockManager blockManager);
+                        IBlockManager blockManager);
     }
 
     private final IBlockFile entry;
@@ -146,14 +148,14 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
 
     private String name;
 
-    private final BlockManager blockManager;
+    private final IBlockManager blockManager;
 
-    protected DirectoryEntry(IBlockFile entry, String name, BlockManager blockManager) {
-        this(entry, 0L, BlockManager.NULL_BLOCK_INDEX, name, blockManager);
+    protected DirectoryEntry(IBlockFile entry, String name, IBlockManager blockManager) {
+        this(entry, 0L, IBlockManager.NULL_BLOCK_INDEX, name, blockManager);
     }
 
     protected DirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                             BlockManager blockManager) {
+                             IBlockManager blockManager) {
 
         this.entry = entry;
 
@@ -266,17 +268,22 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         return content;
     }
 
+    @Override
+    public boolean isEmpty() throws FileFileSystemException {
+        return getContentInternal().isEmpty();
+    }
+
+    @Override
     public int getBlockChainHead() {
         return entry.getBlockChainHead();
     }
 
-    public abstract boolean isDirectory();
-
+    @Override
     public ICommonFile getContent() throws FileFileSystemException {
         return getContentInternal();
     }
 
-    protected static <T extends DirectoryEntry> T createNamed(int flags, String name, BlockManager blockManager,
+    protected static <T extends IDirectoryEntry> T createNamed(int flags, String name, IBlockManager blockManager,
                                                               ICreator<T> creator) throws FileFileSystemException {
 
         checkNameNotEmpty(name);
@@ -284,7 +291,7 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         return create(flags, name, blockManager, creator);
     }
 
-    protected static <T extends DirectoryEntry> T create(int flags, String name, BlockManager blockManager,
+    protected static <T extends IDirectoryEntry> T create(int flags, String name, IBlockManager blockManager,
                                                          ICreator<T> creator) throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
@@ -295,8 +302,9 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
                         entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
-    private static <T extends DirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
-                                                       IBlockFile entry, BlockManager blockManager, ICreator<T> creator)
+    private static <T extends IDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
+                                                       IBlockFile entry, IBlockManager blockManager,
+                                                       ICreator<T> creator)
             throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
@@ -309,30 +317,32 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
     protected static void fillNewEntryData(ByteBuffer entryData, int flags, byte[] nameBytes) {
         entryData.putInt(flags);
         entryData.putLong(0L);
-        entryData.putInt(BlockManager.NULL_BLOCK_INDEX);
+        entryData.putInt(IBlockManager.NULL_BLOCK_INDEX);
         fillNewNameData(entryData, nameBytes);
     }
 
-    public static DirectoryEntry openAny(int blockChainHead, BlockManager blockManager) throws FileFileSystemException {
+    public static IDirectoryEntry openAny(int blockChainHead, IBlockManager blockManager)
+            throws FileFileSystemException {
+
         return open(blockChainHead, blockManager, DirectoryEntry::checkAny, getOpenerAny());
     }
 
-    protected static <T extends DirectoryEntry> T openTyped(int blockChainHead, BlockManager blockManager,
+    protected static <T extends IDirectoryEntry> T openTyped(int blockChainHead, IBlockManager blockManager,
                                                             IKindChecker checker, ICreatorForOpen<T> creator)
             throws FileFileSystemException {
 
         return open(blockChainHead, blockManager, checker, getOpener(creator));
     }
 
-    private static <T extends DirectoryEntry> T open(int blockChainHead, BlockManager blockManager,
+    private static <T extends IDirectoryEntry> T open(int blockChainHead, IBlockManager blockManager,
                                                      IKindChecker checker, IOpener<T> opener)
             throws FileFileSystemException {
 
         return open(blockChainHead, false, blockManager, checker, opener);
     }
 
-    protected static <T extends DirectoryEntry> T open(int blockChainHead, boolean skipCheckBlockChainHead,
-                                                       BlockManager blockManager,
+    protected static <T extends IDirectoryEntry> T open(int blockChainHead, boolean skipCheckBlockChainHead,
+                                                       IBlockManager blockManager,
                                                        IKindChecker checker, IOpener<T> opener)
             throws FileFileSystemException {
 
@@ -373,18 +383,19 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         }
     }
 
-    private static IOpener<DirectoryEntry> getOpenerAny() {
+    private static IOpener<IDirectoryEntry> getOpenerAny() {
         return getOpener(DirectoryEntry::createForOpenAny);
     }
 
-    private static <T extends DirectoryEntry> IOpener<T> getOpener(ICreatorForOpen<T> creator) {
+    private static <T extends IDirectoryEntry> IOpener<T> getOpener(ICreatorForOpen<T> creator) {
         return (entry, isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager) -> open(entry,
                 isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager, creator);
     }
 
-    private static <T extends DirectoryEntry> T open(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                     int contentBlockChainHead, int nameSize, BlockManager blockManager,
-                                                     ICreatorForOpen<T> creator) throws FileFileSystemException {
+    private static <T extends IDirectoryEntry> T open(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                     int contentBlockChainHead, int nameSize,
+                                                     IBlockManager blockManager, ICreatorForOpen<T> creator)
+            throws FileFileSystemException {
 
         if (nameSize == 0) {
             throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_NAME_ERROR);
@@ -400,8 +411,8 @@ public abstract class DirectoryEntry implements INamed, IRemovable {
         return creator.create(entry, isDirectory, contentSize, contentBlockChainHead, name, blockManager);
     }
 
-    private static DirectoryEntry createForOpenAny(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                   int contentBlockChainHead, String name, BlockManager blockManager) {
+    private static IDirectoryEntry createForOpenAny(IBlockFile entry, boolean isDirectory, long contentSize,
+                                                   int contentBlockChainHead, String name, IBlockManager blockManager) {
 
         return isDirectory ?
                 new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager) :
