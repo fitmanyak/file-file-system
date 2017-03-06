@@ -3,9 +3,9 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ICommonOperation;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ICommonOperationWithArgument;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperation;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperationWithArgument;
 
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -183,9 +183,9 @@ public class BlockManager implements IBlockManager {
             }
 
             position = newPosition;
-            withinBlockPosition = (int) (position % BLOCK_SIZE);
+            withinBlockPosition = (int) (position & BLOCK_SIZE_MINUS_ONE);
 
-            int newWithinChainIndex = (int) (position / BLOCK_SIZE);
+            int newWithinChainIndex = (int) (position >> BLOCK_SIZE_EXPONENT);
             if (startNextBlock()) {
                 newWithinChainIndex--;
             }
@@ -267,7 +267,8 @@ public class BlockManager implements IBlockManager {
             return performOperationAtPosition(newPosition, destination, this::read);
         }
 
-        private int performOperationAtPosition(long newPosition, ByteBuffer buffer, IOperation operation)
+        private int performOperationAtPosition(long newPosition, ByteBuffer buffer,
+                                               IOperationWithArgument<ByteBuffer> operation)
                 throws FileFileSystemException {
 
             setPosition(newPosition);
@@ -430,8 +431,8 @@ public class BlockManager implements IBlockManager {
         performOperation(destination, dst -> channel.read(dst, position), errorMessage);
     }
 
-    private static void performOperation(ByteBuffer buffer, ICommonOperation operation, String errorMessage)
-            throws FileFileSystemException {
+    private static void performOperation(ByteBuffer buffer, ICommonOperationWithArgument<ByteBuffer> operation,
+                                         String errorMessage) throws FileFileSystemException {
 
         boolean partiallyPerformed;
         try {
