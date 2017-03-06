@@ -62,7 +62,8 @@ public class BlockManager implements IBlockManager {
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
     private interface IBlockFileSizeChanger {
-        public void resize(int newBlockChainLength) throws FileFileSystemException;
+        public void resize(int withinChainIndex, int blockChainLength, int newBlockChainLength)
+                throws FileFileSystemException;
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
@@ -73,22 +74,18 @@ public class BlockManager implements IBlockManager {
 
     private class BlockFile implements IBlockFile {
         private long size;
-        private int blockChainLength;
         private int blockChainHead;
 
         private long position;
-        private int withinBlockPosition;
 
         private int blockIndex;
-        private int withinChainIndex;
 
         private BlockFile() {
-            this(0L, 0, NULL_BLOCK_INDEX);
+            this(0L, NULL_BLOCK_INDEX);
         }
 
-        private BlockFile(long size, int blockChainLength, int blockChainHead) {
+        private BlockFile(long size, int blockChainHead) {
             this.size = size;
-            this.blockChainLength = blockChainLength;
             this.blockChainHead = blockChainHead;
 
             reset();
@@ -115,27 +112,44 @@ public class BlockManager implements IBlockManager {
         }
 
         private void resize(long newSize, IBlockFileSizeChanger sizeChanger) throws FileFileSystemException {
-            int newBlockChainLength = getRequiredBlockCount(newSize);
-            sizeChanger.resize(newBlockChainLength);
+            sizeChanger.resize(getWithinChainIndex(), getRequiredBlockCount(size), getRequiredBlockCount(newSize));
 
             size = newSize;
-            blockChainLength = newBlockChainLength;
         }
 
-        private void resizeWithIncrease(int newBlockChainLength) throws FileFileSystemException {
+        private int getWithinChainIndex() {
+            int withinChainIndex = (int) (position >> BLOCK_SIZE_EXPONENT);
+            if (startNextBlock()) {
+                withinChainIndex--;
+            }
+
+            return withinChainIndex;
+        }
+
+        private boolean startNextBlock() {
+            return startNextBlock(getWithinBlockPosition());
+        }
+
+        private boolean startNextBlock(int withinBlockPosition) {
+            return position != 0L && withinBlockPosition == 0;
+        }
+
+        private int getWithinBlockPosition() {
+            return (int) (position & BLOCK_SIZE_MINUS_ONE);
+        }
+
+        private void resizeWithIncrease(int withinChainIndex, int blockChainLength, int newBlockChainLength)
+                throws FileFileSystemException {
+
             if (size == 0L) {
                 blockChainHead = allocate(newBlockChainLength);
                 blockIndex = blockChainHead;
             } else {
                 int additionalBlockCount = newBlockChainLength - blockChainLength;
                 if (additionalBlockCount != 0) {
-                    reallocate(blockIndex, getRemainingLength(), additionalBlockCount);
+                    reallocate(blockIndex, (blockChainLength - withinChainIndex), additionalBlockCount);
                 }
             }
-        }
-
-        private int getRemainingLength() {
-            return blockChainLength - withinChainIndex;
         }
 
         private void decreaseSize(long newSize) throws FileFileSystemException {
@@ -148,16 +162,18 @@ public class BlockManager implements IBlockManager {
             }
         }
 
-        private void resizeWithDecrease(int newBlockChainLength) throws FileFileSystemException {
+        private void resizeWithDecrease(int withinChainIndex, int blockChainLength, int newBlockChainLength)
+                throws FileFileSystemException {
+
             int releasedBlockCount = blockChainLength - newBlockChainLength;
             if (releasedBlockCount != 0) {
                 if (newBlockChainLength == 0) {
-                    deallocate(blockChainHead, blockChainLength, blockIndex, getRemainingLength());
+                    deallocate(blockChainHead, blockChainLength, blockIndex, (blockChainLength - withinChainIndex));
                     blockChainHead = NULL_BLOCK_INDEX;
                 } else if (Integer.compareUnsigned(withinChainIndex, newBlockChainLength) < 0) {
                     deallocate(blockIndex, (newBlockChainLength - withinChainIndex), releasedBlockCount);
                 } else {
-                    deallocate(blockChainHead, newBlockChainLength, blockIndex, getRemainingLength(),
+                    deallocate(blockChainHead, newBlockChainLength, blockIndex, (blockChainLength - withinChainIndex),
                             releasedBlockCount, (newBlockChainLength == withinChainIndex));
                 }
             }
@@ -182,13 +198,11 @@ public class BlockManager implements IBlockManager {
                 return;
             }
 
-            position = newPosition;
-            withinBlockPosition = (int) (position & BLOCK_SIZE_MINUS_ONE);
+            int withinChainIndex = getWithinChainIndex();
 
-            int newWithinChainIndex = (int) (position >> BLOCK_SIZE_EXPONENT);
-            if (startNextBlock()) {
-                newWithinChainIndex--;
-            }
+            position = newPosition;
+
+            int newWithinChainIndex = getWithinChainIndex();
 
             try {
                 blockIndex = Integer.compareUnsigned(newWithinChainIndex, withinChainIndex) < 0 ?
@@ -197,20 +211,13 @@ public class BlockManager implements IBlockManager {
             } catch (Throwable t) {
                 reset();
             }
-            withinChainIndex = newWithinChainIndex;
-        }
-
-        private boolean startNextBlock() {
-            return position != 0L && withinBlockPosition == 0;
         }
 
         @Override
         public void reset() {
             position = 0L;
-            withinBlockPosition = 0;
 
             blockIndex = blockChainHead;
-            withinChainIndex = 0;
         }
 
         @Override
@@ -233,10 +240,9 @@ public class BlockManager implements IBlockManager {
             int bufferRemaining = buffer.remaining();
             while (bufferRemaining != 0 && position != size) {
                 int actualBlockIndex = blockIndex;
-                int actualWithinChainIndex = withinChainIndex;
-                if (startNextBlock()) {
+                int withinBlockPosition = getWithinBlockPosition();
+                if (startNextBlock(withinBlockPosition)) {
                     actualBlockIndex = getNextBlockIndex(actualBlockIndex);
-                    actualWithinChainIndex++;
                 }
 
                 int withinBlockRemaining = BLOCK_SIZE - withinBlockPosition;
@@ -249,14 +255,7 @@ public class BlockManager implements IBlockManager {
 
                 position += toProcess;
 
-                if (withinBlockRemaining == toProcess) {
-                    withinBlockPosition = 0;
-                } else {
-                    withinBlockPosition += toProcess;
-                }
-
                 blockIndex = actualBlockIndex;
-                withinChainIndex = actualWithinChainIndex;
             }
 
             return totalProcessed;
@@ -319,7 +318,6 @@ public class BlockManager implements IBlockManager {
         @Override
         public void setCalculatedSize(long newSize) {
             size = newSize;
-            blockChainLength = getRequiredBlockCount(size);
         }
     }
 
@@ -580,11 +578,10 @@ public class BlockManager implements IBlockManager {
 
         checkBlockFileSize(size);
 
-        int blockChainLength = getRequiredBlockCount(size);
-        checkBlockChainHead(blockCount, blockChainLength, blockChainHead, "Bad block file block chain length",
-                "Bad block file block chain head", skipCheckBlockChainHead);// TODO
+        checkBlockChainHead(blockCount, getRequiredBlockCount(size), blockChainHead,
+                "Bad block file block chain length", "Bad block file block chain head", skipCheckBlockChainHead);// TODO
 
-        return new BlockFile(size, blockChainLength, blockChainHead);
+        return new BlockFile(size, blockChainHead);
     }
 
     private static void checkBlockChainHead(int blockCount, int blockChainLength, int blockChainHead,
