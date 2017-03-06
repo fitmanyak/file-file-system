@@ -12,5 +12,6 @@ import java.nio.ByteBuffer;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
 public interface IOperation extends ICommonOperation {
+    @Override
     public int perform(ByteBuffer buffer) throws FileFileSystemException;
 }

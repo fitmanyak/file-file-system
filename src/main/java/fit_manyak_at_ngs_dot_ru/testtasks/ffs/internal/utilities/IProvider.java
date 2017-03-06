@@ -10,5 +10,6 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
 public interface IProvider<T> extends ICommonProvider<T> {
+    @Override
     public T get() throws FileFileSystemException;
 }

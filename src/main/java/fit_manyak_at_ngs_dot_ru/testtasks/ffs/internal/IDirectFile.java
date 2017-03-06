@@ -9,9 +9,12 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface IDirectFile extends ICommonFile {
+    @Override
     public long getSize();
 
+    @Override
     public long getPosition();
 
+    @Override
     public void reset();
 }
