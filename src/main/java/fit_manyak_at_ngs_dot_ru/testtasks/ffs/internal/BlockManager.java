@@ -34,12 +34,6 @@ public class BlockManager implements ICloseable {
     private static final byte BLOCK_INDEX_SIZE_EXPONENT = 0;
     public static final int BLOCK_INDEX_SIZE = 4;
 
-    private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
-
-    private static final int MINIMAL_BLOCK_COUNT = 4;
-    private static final long MINIMAL_SIZE = MINIMAL_BLOCK_COUNT * BLOCK_SIZE;
-    private static final long MAXIMAL_SIZE = ((1L << (8L * BLOCK_INDEX_SIZE)) - 1L) * BLOCK_SIZE;
-
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
     private static final byte CONTENT_SIZE_SIZE_EXPONENT = 0;
     public static final int CONTENT_SIZE_SIZE = 8;
@@ -52,6 +46,17 @@ public class BlockManager implements ICloseable {
     private static final long FREE_BLOCK_DATA_POSITION = SIGNATURE_AND_GEOMETRY_SIZE;
 
     private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
+
+    private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
+
+    private static final int MINIMAL_BLOCK_COUNT = 4;
+    private static final long MAXIMAL_BLOCK_COUNT = (1L << (8L * BLOCK_INDEX_SIZE)) - 1L;
+    private static final long MINIMAL_SIZE =
+            FIXED_SIZE_DATA_SIZE + MINIMAL_BLOCK_COUNT * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
+    private static final long MAXIMAL_SIZE =
+            FIXED_SIZE_DATA_SIZE + MAXIMAL_BLOCK_COUNT * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
+
+    private static final long MAXIMAL_BLOCK_FILE_SIZE = MAXIMAL_BLOCK_COUNT * BLOCK_SIZE;
 
     public static final int NULL_BLOCK_INDEX = 0;
 
@@ -116,7 +121,6 @@ public class BlockManager implements ICloseable {
         }
 
         private void resize(long newSize, IBlockFileSizeChanger sizeChanger) throws FileFileSystemException {
-
             int newBlockChainLength = getRequiredBlockCount(newSize);
             sizeChanger.resize(newBlockChainLength);
 
@@ -352,22 +356,18 @@ public class BlockManager implements ICloseable {
         ErrorHandlingHelper.performAction(channel::close, "File channel close error");// TODO
     }
 
-    private static int getRequiredBlockCount(long size) {
-        return (int) getRequiredBlockCountLong(size);
-    }
-
-    private static long getRequiredBlockCountLong(long size) {
-        return (size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT;
-    }
-
     private static void checkBlockFileSize(long size) {
-        checkSize(size, 0L, "Bad block file size");// TODO
+        checkSize(size, 0L, MAXIMAL_BLOCK_FILE_SIZE, "Bad block file size %d (should be between %d and %d)");// TODO
     }
 
-    private static void checkSize(long size, long minimalSize, String errorMessage) {
-        if (size < minimalSize || size > MAXIMAL_SIZE) {
-            throw new IllegalArgumentException(errorMessage);
+    private static void checkSize(long size, long minimalSize, long maximalSize, String errorMessageFormat) {
+        if (size < minimalSize || size > maximalSize) {
+            throw new IllegalArgumentException(String.format(errorMessageFormat, size, minimalSize, maximalSize));
         }
+    }
+
+    private static int getRequiredBlockCount(long size) {
+        return (int) (size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT;
     }
 
     private int allocate(int requiredBlockCount) throws FileFileSystemException {
@@ -613,8 +613,7 @@ public class BlockManager implements ICloseable {
     public static void format(Path path, long size, Consumer<ByteBuffer> rootDirectoryEntryFormatter)
             throws FileFileSystemException {
 
-        checkSize(size, MINIMAL_SIZE,
-                String.format(Messages.BAD_SIZE_FOR_FORMAT_ERROR, size, MINIMAL_SIZE, MAXIMAL_SIZE));
+        checkSize(size, MINIMAL_SIZE, MAXIMAL_SIZE, Messages.BAD_SIZE_FOR_FORMAT_ERROR);
 
         ErrorHandlingHelper.performActionWithCloseableArgument(() -> new RandomAccessFile(path.toString(), "rw"),
                 "File open error", file -> format(file, size, rootDirectoryEntryFormatter), "File close error");// TODO
@@ -624,9 +623,8 @@ public class BlockManager implements ICloseable {
                                Consumer<ByteBuffer> rootDirectoryEntryFormatter)
             throws FileFileSystemException {
 
-        long blockCountLong = getRequiredBlockCountLong(size);
-        ErrorHandlingHelper
-                .performAction(() -> file.setLength(getTotalSize(blockCountLong)), "File size set error");// TODO
+        long blockCountLong = (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
+        ErrorHandlingHelper.performAction(() -> file.setLength(getSize(blockCountLong)), "File size set error");// TODO
 
         ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, "File channel get error",
                 channel -> format(channel, blockCountLong, rootDirectoryEntryFormatter),
@@ -661,11 +659,11 @@ public class BlockManager implements ICloseable {
         flipBufferAndWrite(rootDirectoryEntry, channel, "Root directory entry write error");// TODO
     }
 
-    private static long getTotalSize(int blockCount) {
-        return getTotalSize(Integer.toUnsignedLong(blockCount));
+    private static long getSize(int blockCount) {
+        return getSize(Integer.toUnsignedLong(blockCount));
     }
 
-    private static long getTotalSize(long blockCountLong) {
+    private static long getSize(long blockCountLong) {
         return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
 
@@ -718,7 +716,7 @@ public class BlockManager implements ICloseable {
                 Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
 
         long size = ErrorHandlingHelper.get(channel::size, "File channel size get error");// TODO
-        if (getTotalSize(blockCount) != size) {
+        if (getSize(blockCount) != size) {
             throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
         }
 
