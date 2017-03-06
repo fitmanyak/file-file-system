@@ -6,6 +6,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IFileFileSystem extends ICloseableSpaceInformer {
-    public IRootDirectory getRootDirectory();
+public interface ICloseableSpaceInformer extends ICloseable {
+    public long getTotalSpace();
+    public long getFreeSpace();
 }

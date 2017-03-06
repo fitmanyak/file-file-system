@@ -29,6 +29,16 @@ public class FileFileSystem implements IFileFileSystem {
     }
 
     @Override
+    public long getTotalSpace() {
+        return blockManager.getTotalSpace();
+    }
+
+    @Override
+    public long getFreeSpace() {
+        return blockManager.getFreeSpace();
+    }
+
+    @Override
     public IRootDirectory getRootDirectory() {
         return rootDirectory;
     }

@@ -354,6 +354,20 @@ public class BlockManager implements IBlockManager {
         ErrorHandlingHelper.performAction(channel::close, "File channel close error");// TODO
     }
 
+    @Override
+    public long getTotalSpace() {
+        return getSize(blockCount);
+    }
+
+    private static long getSize(int blockCount) {
+        return Integer.toUnsignedLong(blockCount) * BLOCK_SIZE;
+    }
+
+    @Override
+    public long getFreeSpace() {
+        return getSize(freeBlockCount);
+    }
+
     private static void checkBlockFileSize(long size) {
         checkSize(size, 0L, MAXIMAL_BLOCK_FILE_SIZE, "Bad block file size %d (should be between %d and %d)");// TODO
     }
@@ -550,7 +564,7 @@ public class BlockManager implements IBlockManager {
     }
 
     private long getAbsolutePosition(int blockIndex, int withinBlockPosition) {
-        return blockTableOffset + Integer.toUnsignedLong(blockIndex) * BLOCK_SIZE + withinBlockPosition;
+        return blockTableOffset + getSize(blockIndex) + withinBlockPosition;
     }
 
     private void writeWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer source)
@@ -624,7 +638,7 @@ public class BlockManager implements IBlockManager {
             throws FileFileSystemException {
 
         long blockCountLong = (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
-        ErrorHandlingHelper.performAction(() -> file.setLength(getSize(blockCountLong)), "File size set error");// TODO
+        ErrorHandlingHelper.performAction(() -> file.setLength(getTotalSize(blockCountLong)), "File size set error");// TODO
 
         ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, "File channel get error",
                 channel -> format(channel, blockCountLong, rootDirectoryEntryFormatter),
@@ -659,11 +673,11 @@ public class BlockManager implements IBlockManager {
         flipBufferAndWrite(rootDirectoryEntry, channel, "Root directory entry write error");// TODO
     }
 
-    private static long getSize(int blockCount) {
-        return getSize(Integer.toUnsignedLong(blockCount));
+    private static long getTotalSize(int blockCount) {
+        return getTotalSize(Integer.toUnsignedLong(blockCount));
     }
 
-    private static long getSize(long blockCountLong) {
+    private static long getTotalSize(long blockCountLong) {
         return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
 
@@ -716,7 +730,7 @@ public class BlockManager implements IBlockManager {
                 Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
 
         long size = ErrorHandlingHelper.get(channel::size, "File channel size get error");// TODO
-        if (getSize(blockCount) != size) {
+        if (getTotalSize(blockCount) != size) {
             throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
         }
 

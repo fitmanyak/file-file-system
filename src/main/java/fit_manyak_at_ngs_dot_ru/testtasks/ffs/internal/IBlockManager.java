@@ -1,7 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseable;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseableSpaceInformer;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -9,7 +9,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseable;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockManager extends ICloseable {
+public interface IBlockManager extends ICloseableSpaceInformer {
     public static final int BLOCK_INDEX_SIZE = 4;
 
     public static final int CONTENT_SIZE_SIZE = 8;
