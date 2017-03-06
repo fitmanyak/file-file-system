@@ -14,6 +14,4 @@ public interface IDirectory extends IDirectoryItem {
     public IDirectory openSubDirectory(String name) throws FileFileSystemException;
 
     public IDirectoryItem openItem(String name) throws FileFileSystemException;
-
-    public void removeItem(String name) throws FileFileSystemException;
 }

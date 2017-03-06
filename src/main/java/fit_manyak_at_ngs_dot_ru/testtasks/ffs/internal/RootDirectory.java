@@ -85,7 +85,7 @@ public class RootDirectory implements IRootParentDirectory {
     }
 
     @Override
-    public void removeItem(String name) throws FileFileSystemException {
+    public void checkNameUnique(String name) throws FileFileSystemException {
         // TODO
     }
 

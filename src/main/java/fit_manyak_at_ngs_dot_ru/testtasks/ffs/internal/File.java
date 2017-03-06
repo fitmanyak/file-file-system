@@ -32,7 +32,13 @@ public class File implements IFile {
 
     @Override
     public void setName(String newName) throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(() -> entry.setName(newName), "File name change error");// TODO
+        ErrorHandlingHelper.performAction(() -> changeName(newName), "File name change error");// TODO
+    }
+
+    private void changeName(String newName) throws FileFileSystemException {
+        parentDirectory.checkNameUnique(newName);
+
+        entry.setName(newName);
     }
 
     @Override
