@@ -1,7 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IAction;
@@ -32,7 +31,7 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
 
     private static final long NAME_DATA_POSITION = WITHOUT_NAME_DATA_SIZE;
 
-    private class Content implements ICommonFile {
+    private class Content implements IDirectFile {
         private final IBlockFile delegate;
 
         private Content(IBlockFile delegate) {
@@ -279,7 +278,7 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
     }
 
     @Override
-    public ICommonFile getContent() throws FileFileSystemException {
+    public IDirectFile getContent() throws FileFileSystemException {
         return getContentInternal();
     }
 

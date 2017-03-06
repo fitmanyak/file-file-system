@@ -9,13 +9,13 @@ import java.nio.ByteBuffer;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface ICommonFile {
-    public long getSize();
+    public long getSize() throws FileFileSystemException;
     public void setSize(long newSize) throws FileFileSystemException;
 
-    public long getPosition();
+    public long getPosition() throws FileFileSystemException;
     public void setPosition(long newPosition) throws FileFileSystemException;
 
-    public void reset();
+    public void reset() throws FileFileSystemException;
 
     public int read(ByteBuffer destination) throws FileFileSystemException;
     public int read(long newPosition, ByteBuffer destination) throws FileFileSystemException;

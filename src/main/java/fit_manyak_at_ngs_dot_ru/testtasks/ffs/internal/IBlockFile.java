@@ -1,6 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IComplexFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseable;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRemovable;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -8,7 +9,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IComplexFile;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockFile extends IComplexFile, IBlockChainBased {
+public interface IBlockFile extends IDirectFile, ICloseable, IRemovable, IBlockChainBased {
     public boolean isEmpty();
 
     public void setCalculatedSize(long newSize);
