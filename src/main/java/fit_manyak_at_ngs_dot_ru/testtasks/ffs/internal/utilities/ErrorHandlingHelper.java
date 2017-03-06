@@ -94,4 +94,12 @@ public class ErrorHandlingHelper {
             }
         }
     }
+
+    public static int performOperation(IOperation operation, String errorMessage) throws FileFileSystemException {
+        try {
+            return operation.perform();
+        } catch (Throwable t) {
+            throw new FileFileSystemException(errorMessage, t);
+        }
+    }
 }
