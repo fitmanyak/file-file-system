@@ -1,6 +1,8 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectoryItem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRootDirectory;
 
@@ -11,7 +13,7 @@ import java.nio.ByteBuffer;
  *         Created on 26.02.2017.
  */
 
-public class RootDirectory implements IRootDirectory {
+public class RootDirectory implements IRootParentDirectory {
     private final IRootDirectoryDirectoryEntry entry;
 
     private final IBlockManager blockManager;
@@ -23,35 +25,73 @@ public class RootDirectory implements IRootDirectory {
     }
 
     @Override
+    public String getName() {
+        return null;// TODO
+    }
+
+    @Override
+    public void setName(String newName) throws FileFileSystemException {
+        // TODO
+    }
+
+    @Override
+    public void remove() throws FileFileSystemException {
+        // TODO
+    }
+
+    @Override
+    public boolean isDirectory() {
+        return true;
+    }
+
+    @Override
+    public boolean isEmpty() throws FileFileSystemException {
+        return false;// TODO
+    }
+
+    @Override
     public void close() throws FileFileSystemException {
+        // TODO
+    }
+
+    @Override
+    public IDirectory getParentDirectory() {
+        return null;// TODO
     }
 
     @Override
     public IFile createFile(String name) throws FileFileSystemException {
-        /*long contentSize = entry.getContentSize();
-        long newContentSize = contentSize + BlockManager.BLOCK_INDEX_SIZE;
-        int contentBlockChainHead = entry.getContentBlockChainHead();
-        if (contentSize == 0) {
-            contentBlockChainHead = blockManager.allocBlock();
-            entry.updateContentData(newContentSize, contentBlockChainHead);
-        }
-        else {
-            entry.updateContentSize(newContentSize);
-        }
-
-        DirectoryEntry fileEntry = DirectoryEntry.createFile(name, blockManager);
-
-        ByteBuffer fileEntryBlockChainHead = ByteBuffer.allocateDirect(BlockManager.BLOCK_INDEX_SIZE);
-        fileEntryBlockChainHead.putInt(fileEntry.getBlockChainHead());
-        blockManager.writeDataInBlock(contentBlockChainHead, contentSize, fileEntryBlockChainHead);
-
-        return new File(fileEntry);*/
-        return null;
+        return null;// TODO
     }
 
     @Override
     public IFile openFile(String name) throws FileFileSystemException {
-        return null;
+        return null;// TODO
+    }
+
+    @Override
+    public IDirectory createSubDirectory(String name) throws FileFileSystemException {
+        return null;// TODO
+    }
+
+    @Override
+    public IDirectory openSubDirectory(String name) throws FileFileSystemException {
+        return null;// TODO
+    }
+
+    @Override
+    public IDirectoryItem openItem(String name) throws FileFileSystemException {
+        return null;// TODO
+    }
+
+    @Override
+    public void removeItem(String name) throws FileFileSystemException {
+        // TODO
+    }
+
+    @Override
+    public void removeItem(int entryBlockChainHead) throws FileFileSystemException {
+        // TODO
     }
 
     public static void format(ByteBuffer block) {
