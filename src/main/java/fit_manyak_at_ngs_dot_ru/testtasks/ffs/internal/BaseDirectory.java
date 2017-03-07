@@ -4,6 +4,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectoryItem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
 import java.nio.ByteBuffer;
@@ -81,12 +82,28 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
         return openItemInternal(name).getAsFile();
     }
 
-    private IInternalDirectory openItemInternal(String name) throws FileFileSystemException {
-        return null;// TODO
-    }
+    private IInternalDirectoryItem openItemInternal(String name) throws FileFileSystemException {
+        DirectoryEntry.checkNameNotEmpty(name);
 
-    private static long getItemCount(long size) {
-        return size >> IBlockManager.BLOCK_INDEX_SIZE_EXPONENT;
+        IDirectFile content = getContent();
+        content.reset();
+
+        long itemCount = content.getSize() >> IBlockManager.BLOCK_INDEX_SIZE_EXPONENT;
+        for (long l = 0; l < itemCount; l++) {
+            IOUtilities.readAndFlipBuffer(subEntryBlockChainHead, destination -> content.read(destination),
+                    "Directory content read error");
+            int blockChainHead = subEntryBlockChainHead.getInt();
+            subEntryBlockChainHead.clear();
+
+            IDirectoryEntry<? extends IInternalDirectoryItem> subEntry = ErrorHandlingHelper
+                    .get(() -> DirectoryEntry.openAny(blockChainHead, getBlockManger()),
+                            "Directory sub entry open error");// TODO
+            if (subEntry.getName().equals(name)) {
+                return subEntry.getItem(this);
+            }
+        }
+
+        throw new FileFileSystemException(String.format("Directory item named %s is missing", name));// TODO
     }
 
     @Override

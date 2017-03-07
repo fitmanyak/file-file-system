@@ -197,7 +197,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         }
     }
 
-    private static void checkNameNotEmpty(String name) throws FileFileSystemException {
+    public static void checkNameNotEmpty(String name) throws FileFileSystemException {
         if (name.isEmpty()) {
             throw new IllegalArgumentException("Empty directory entry name");// TODO
         }
