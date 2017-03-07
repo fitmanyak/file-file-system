@@ -525,7 +525,7 @@ public class BlockManager implements IBlockManager {
             throw new FileFileSystemException("Too many released blocks");// TODO
         }
 
-        if (freeBlockCount != blockCount - releasedBlockCount) {
+        if (Integer.compareUnsigned((blockCount - releasedBlockCount), freeBlockCount) < 0) {
             throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);// TODO
         }
     }
