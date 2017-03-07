@@ -8,6 +8,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHe
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -25,6 +26,29 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private interface ICreator<T extends IInternalDirectoryItem> {
         public T create(String name, IInternalDirectory parentDirectory, IBlockManager blockManager)
                 throws FileFileSystemException;
+    }
+
+    private static class SubEntryIterationContext {
+        private final IDirectFile content;
+        private final long count;
+
+        private long index;
+        private int blockChainHead;
+
+        private IDirectoryEntry<? extends IInternalDirectoryItem> entry;
+
+        private SubEntryIterationContext(IDirectFile content, long count) {
+            this.content = content;
+            this.count = count;
+
+            this.blockChainHead = IBlockManager.NULL_BLOCK_INDEX;
+        }
+    }
+
+    @SuppressWarnings("UnnecessaryInterfaceModifier")
+    @FunctionalInterface
+    private interface ISubEntryVisitor {
+        public boolean visit(SubEntryIterationContext context) throws FileFileSystemException;
     }
 
     private final ByteBuffer subEntryBlockChainHead;
@@ -83,27 +107,57 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     }
 
     private IInternalDirectoryItem openItemInternal(String name) throws FileFileSystemException {
+        SubEntryIterationContext context = findSubEntryByName(name);
+        if (context.entry == null) {
+            throw new FileFileSystemException(String.format("Directory sub entry named %s is missing", name));// TODO
+        }
+
+        return context.entry.getItem(this);
+    }
+
+    private SubEntryIterationContext findSubEntryByName(String name) throws FileFileSystemException {
         DirectoryEntry.checkNameNotEmpty(name);
 
+        return iterateOverSubEntries(context -> checkSubEntryNameEquals(name, context));
+    }
+
+    private SubEntryIterationContext iterateOverSubEntries(ISubEntryVisitor visitor) throws FileFileSystemException {
         IDirectFile content = getContent();
         content.reset();
 
-        long itemCount = content.getSize() >> IBlockManager.BLOCK_INDEX_SIZE_EXPONENT;
-        for (long l = 0; l < itemCount; l++) {
+        SubEntryIterationContext context =
+                new SubEntryIterationContext(content, (content.getSize() >> IBlockManager.BLOCK_INDEX_SIZE_EXPONENT));
+        for (; context.index < context.count; context.index++) {
             IOUtilities.readAndFlipBuffer(subEntryBlockChainHead, destination -> content.read(destination),
                     "Directory content read error");
-            int blockChainHead = subEntryBlockChainHead.getInt();
+            context.blockChainHead = subEntryBlockChainHead.getInt();
             subEntryBlockChainHead.clear();
 
-            IDirectoryEntry<? extends IInternalDirectoryItem> subEntry = ErrorHandlingHelper
-                    .get(() -> DirectoryEntry.openAny(blockChainHead, getBlockManger()),
-                            "Directory sub entry open error");// TODO
-            if (subEntry.getName().equals(name)) {
-                return subEntry.getItem(this);
+            if (visitor.visit(context)) {
+                break;
             }
         }
 
-        throw new FileFileSystemException(String.format("Directory item named %s is missing", name));// TODO
+        return context;
+    }
+
+    private boolean checkSubEntryNameEquals(String name, SubEntryIterationContext context)
+            throws FileFileSystemException {
+        IDirectoryEntry<? extends IInternalDirectoryItem> entry = getEntry(context);
+        if (entry.getName().equals(name)) {
+            context.entry = entry;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private IDirectoryEntry<? extends IInternalDirectoryItem> getEntry(SubEntryIterationContext context)
+            throws FileFileSystemException {
+
+        return ErrorHandlingHelper.get(() -> DirectoryEntry.openAny(context.blockChainHead, getBlockManger()),
+                "Directory sub entry open error");// TODO
     }
 
     @Override
@@ -127,17 +181,46 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     }
 
     private IDirectFile checkNameUniqueInternal(String name) throws FileFileSystemException {
-        return null;// TODO
+        SubEntryIterationContext context = findSubEntryByName(name);
+        if (context.entry != null) {
+            throw new FileFileSystemException(
+                    String.format("Directory sub entry named %s already exists", name));// TODO
+        }
+
+        return context.content;
     }
 
     @Override
-    public void removeItem(int entryBlockChainHead) throws FileFileSystemException {
+    public void removeItem(int removedEntryBlockChainHead) throws FileFileSystemException {
+        if (removedEntryBlockChainHead == IBlockManager.NULL_BLOCK_INDEX) {
+            throw new FileFileSystemException("Removed entry block chain head is invalid");// TODO
+        }
+
+        SubEntryIterationContext context =
+                iterateOverSubEntries(ctx -> checkSubEntryBlockChainHeadEquals(removedEntryBlockChainHead, ctx));
+        if (context.index == context.count) {
+            throw new FileFileSystemException("Removed entry is missing");// TODO
+        }
+
         // TODO
+    }
+
+    private static boolean checkSubEntryBlockChainHeadEquals(int entryBlockChainHead,
+                                                             SubEntryIterationContext context) {
+
+        if (context.blockChainHead == entryBlockChainHead) {
+            return true;
+        }
+
+        return false;
     }
 
     @Override
     public Collection<String> getNames() throws FileFileSystemException {
-        return null;// TODO
+        Collection<String> names = new ArrayList<>();
+        iterateOverSubEntries(context -> names.add(getEntry(context).getName()));
+
+        return names;
     }
 
     @Override
