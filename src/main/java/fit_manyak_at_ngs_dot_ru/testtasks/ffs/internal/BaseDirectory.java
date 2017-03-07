@@ -82,7 +82,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     }
 
     private IInternalDirectory openItemInternal(String name) throws FileFileSystemException {
-        return null;
+        return null;// TODO
     }
 
     private static long getItemCount(long size) {
@@ -110,16 +110,17 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     }
 
     private IDirectFile checkNameUniqueInternal(String name) throws FileFileSystemException {
-        return null;
+        return null;// TODO
     }
 
     @Override
     public void removeItem(int entryBlockChainHead) throws FileFileSystemException {
+        // TODO
     }
 
     @Override
     public Collection<String> getNames() throws FileFileSystemException {
-        return null;
+        return null;// TODO
     }
 
     @Override
