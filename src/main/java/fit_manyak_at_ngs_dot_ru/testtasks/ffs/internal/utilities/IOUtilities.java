@@ -21,7 +21,7 @@ public class IOUtilities {
     public static void readAndFlipBuffer(ByteBuffer destination, IActionWithArgument<ByteBuffer> readAction,
                                          String errorMessage) throws FileFileSystemException {
 
-        ErrorHandlingHelper.performAction(() -> readAction.perform(destination), errorMessage);
+        ErrorHandlingHelper.performAction(() -> readAndFlipBuffer(destination, readAction), errorMessage);
     }
 
     public static ByteBuffer createReadAndFlipBuffer(int size, IActionWithArgument<ByteBuffer> readAction)
