@@ -7,7 +7,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
  *         Created on 04.03.2017.
  */
 
-public class FileDirectoryEntry extends DirectoryEntry implements IFileDirectoryEntry {
+public class FileDirectoryEntry extends DirectoryEntry<IInternalFile> implements IFileDirectoryEntry {
     private FileDirectoryEntry(IBlockFile entry, String name, IBlockManager blockManager) {
         super(entry, name, blockManager);
     }
@@ -19,31 +19,11 @@ public class FileDirectoryEntry extends DirectoryEntry implements IFileDirectory
     }
 
     @Override
-    public boolean isDirectory() {
-        return false;
+    public IInternalFile getItem(IInternalDirectory parentDirectory) {
+        return new File(this, parentDirectory);
     }
 
     public static IFileDirectoryEntry create(String name, IBlockManager blockManager) throws FileFileSystemException {
-        return createNamed(FILE_FLAGS, name, blockManager, FileDirectoryEntry::new);
-    }
-
-    public static IFileDirectoryEntry open(int blockChainHead, IBlockManager blockManager)
-            throws FileFileSystemException {
-
-        return openTyped(blockChainHead, blockManager, FileDirectoryEntry::checkIsFile,
-                FileDirectoryEntry::createForOpen);
-    }
-
-    private static void checkIsFile(boolean isDirectory) throws FileFileSystemException {
-        if (isDirectory) {
-            throw new FileFileSystemException("Directory entry is directory directory entry");// TODO
-        }
-    }
-
-    private static IFileDirectoryEntry createForOpen(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                    int contentBlockChainHead, String name,
-                                                    IBlockManager blockManager) {
-
-        return new FileDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager);
+        return createNamed(FILE_FLAGS_VALUE, name, blockManager, FileDirectoryEntry::new);
     }
 }

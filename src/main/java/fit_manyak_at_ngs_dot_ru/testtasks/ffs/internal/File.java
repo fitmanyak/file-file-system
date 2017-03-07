@@ -1,8 +1,6 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IActionWithArgument;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperationWithArgument;
@@ -14,43 +12,9 @@ import java.nio.ByteBuffer;
  *         Created on 26.02.2017.
  */
 
-public class File implements IFile {
-    private final IFileDirectoryEntry entry;
-
-    private final IParentDirectory parentDirectory;
-
-    private File(IFileDirectoryEntry entry, IParentDirectory parentDirectory) {
-        this.entry = entry;
-
-        this.parentDirectory = parentDirectory;
-    }
-
-    @Override
-    public String getName() {
-        return entry.getName();
-    }
-
-    @Override
-    public void setName(String newName) throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(() -> changeName(newName), "File name change error");// TODO
-    }
-
-    private void changeName(String newName) throws FileFileSystemException {
-        parentDirectory.checkNameUnique(newName);
-
-        entry.setName(newName);
-    }
-
-    @Override
-    public void remove() throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(this::performRemove, "File remove error");// TODO
-    }
-
-    private void performRemove() throws FileFileSystemException {
-        int entryBlockChainHead = entry.getBlockChainHead();
-        entry.remove();
-
-        parentDirectory.removeItem(entryBlockChainHead);
+public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> implements IInternalFile {
+    public File(IFileDirectoryEntry entry, IInternalDirectory parentDirectory) {
+        super(entry, parentDirectory);
     }
 
     @Override
@@ -59,27 +23,18 @@ public class File implements IFile {
     }
 
     @Override
-    public boolean isEmpty() throws FileFileSystemException {
-        return ErrorHandlingHelper.get(entry::isEmpty, "File empty check error");// TODO
+    public IInternalFile getAsFile() throws FileFileSystemException {
+        return this;
     }
 
     @Override
-    public void close() throws FileFileSystemException {
-        // TODO
-    }
-
-    @Override
-    public IDirectory getParentDirectory() {
-        return parentDirectory;
+    public IInternalDirectory getAsDirectory() throws FileFileSystemException {
+        throw new FileFileSystemException("File isn't directory");// TODO
     }
 
     @Override
     public long getSize() throws FileFileSystemException {
         return getContent().getSize();
-    }
-
-    private IDirectFile getContent() throws FileFileSystemException {
-        return ErrorHandlingHelper.get(entry::getContent, "File get content error");// TODO
     }
 
     @Override
@@ -144,5 +99,11 @@ public class File implements IFile {
     @Override
     public int write(long newPosition, ByteBuffer source) throws FileFileSystemException {
         return performWriteOperation(content -> content.write(newPosition, source));
+    }
+
+    protected static IInternalFile create(String name, IInternalDirectory parentDirectory, IBlockManager blockManager)
+            throws FileFileSystemException {
+
+        return createItem(name, parentDirectory, blockManager, FileDirectoryEntry::create, "File create error");// TODO
     }
 }

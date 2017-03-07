@@ -15,10 +15,10 @@ import java.nio.charset.StandardCharsets;
  *         Created on 04.03.2017.
  */
 
-public abstract class DirectoryEntry implements IDirectoryEntry {
+public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implements IDirectoryEntry<T> {
     private static final int FLAGS_SIZE = 4;
-    protected static final int FILE_FLAGS = 0;
-    protected static final int DIRECTORY_FLAGS = 1;
+    protected static final int FILE_FLAGS_VALUE = 0;
+    protected static final int DIRECTORY_FLAGS_VALUE = 1;
 
     private static final int CONTENT_DATA_SIZE = IBlockManager.CONTENT_SIZE_SIZE + IBlockManager.BLOCK_INDEX_SIZE;
     private static final long CONTENT_DATA_POSITION = FLAGS_SIZE;
@@ -36,6 +36,11 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
 
         private Content(IBlockFile delegate) {
             this.delegate = delegate;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return delegate.isEmpty();
         }
 
         @Override
@@ -106,36 +111,19 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
         private void remove() throws FileFileSystemException {
             delegate.remove();
         }
-
-        private boolean isEmpty() {
-            return delegate.isEmpty();
-        }
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface ICreator<T extends IDirectoryEntry> {
+    protected interface ICreator<T extends IDirectoryEntry<? extends IInternalDirectoryItem>> {
         public T create(IBlockFile entry, String name, IBlockManager blockManager);
     }
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface IKindChecker {
-        public void check(boolean isDirectory) throws FileFileSystemException;
-    }
-
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    protected interface IOpener<T extends IDirectoryEntry> {
+    protected interface IOpener<T extends IDirectoryEntry<? extends IInternalDirectoryItem>> {
         public T open(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, int nameSize,
                       IBlockManager blockManager) throws FileFileSystemException;
-    }
-
-    @SuppressWarnings("UnnecessaryInterfaceModifier")
-    @FunctionalInterface
-    protected interface ICreatorForOpen<T extends IDirectoryEntry> {
-        public T create(IBlockFile entry, boolean isDirectory, long contentSize, int contentBlockChainHead, String name,
-                        IBlockManager blockManager);
     }
 
     private final IBlockFile entry;
@@ -268,11 +256,6 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
     }
 
     @Override
-    public boolean isEmpty() throws FileFileSystemException {
-        return getContentInternal().isEmpty();
-    }
-
-    @Override
     public int getBlockChainHead() {
         return entry.getBlockChainHead();
     }
@@ -282,16 +265,25 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
         return getContentInternal();
     }
 
-    protected static <T extends IDirectoryEntry> T createNamed(int flags, String name, IBlockManager blockManager,
-                                                               ICreator<T> creator) throws FileFileSystemException {
+    @Override
+    public IBlockManager getBlockManager() {
+        return blockManager;
+    }
+
+    protected static <T extends IDirectoryEntry<? extends IInternalDirectoryItem>> T createNamed(int flags, String name,
+                                                                                                 IBlockManager blockManager,
+                                                                                                 ICreator<T> creator)
+            throws FileFileSystemException {
 
         checkNameNotEmpty(name);
 
         return create(flags, name, blockManager, creator);
     }
 
-    protected static <T extends IDirectoryEntry> T create(int flags, String name, IBlockManager blockManager,
-                                                          ICreator<T> creator) throws FileFileSystemException {
+    protected static <T extends IDirectoryEntry<? extends IInternalDirectoryItem>> T create(int flags, String name,
+                                                                                            IBlockManager blockManager,
+                                                                                            ICreator<T> creator)
+            throws FileFileSystemException {
 
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes);
@@ -301,9 +293,12 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
                         entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
     }
 
-    private static <T extends IDirectoryEntry> T create(int flags, String name, byte[] nameBytes, int entrySize,
-                                                        IBlockFile entry, IBlockManager blockManager,
-                                                        ICreator<T> creator)
+    private static <T extends IDirectoryEntry<? extends IInternalDirectoryItem>> T create(int flags, String name,
+                                                                                          byte[] nameBytes,
+                                                                                          int entrySize,
+                                                                                          IBlockFile entry,
+                                                                                          IBlockManager blockManager,
+                                                                                          ICreator<T> creator)
             throws FileFileSystemException {
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
@@ -320,29 +315,17 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
         fillNewNameData(entryData, nameBytes);
     }
 
-    public static IDirectoryEntry openAny(int blockChainHead, IBlockManager blockManager)
+    public static IDirectoryEntry<? extends IInternalDirectoryItem> openAny(int blockChainHead,
+                                                                            IBlockManager blockManager)
             throws FileFileSystemException {
 
-        return open(blockChainHead, blockManager, DirectoryEntry::checkAny, getOpenerAny());
+        return open(blockChainHead, false, blockManager, DirectoryEntry::openAny);
     }
 
-    protected static <T extends IDirectoryEntry> T openTyped(int blockChainHead, IBlockManager blockManager,
-                                                             IKindChecker checker, ICreatorForOpen<T> creator)
-            throws FileFileSystemException {
-
-        return open(blockChainHead, blockManager, checker, getOpener(creator));
-    }
-
-    private static <T extends IDirectoryEntry> T open(int blockChainHead, IBlockManager blockManager,
-                                                      IKindChecker checker, IOpener<T> opener)
-            throws FileFileSystemException {
-
-        return open(blockChainHead, false, blockManager, checker, opener);
-    }
-
-    protected static <T extends IDirectoryEntry> T open(int blockChainHead, boolean skipCheckBlockChainHead,
-                                                        IBlockManager blockManager,
-                                                        IKindChecker checker, IOpener<T> opener)
+    protected static <T extends IDirectoryEntry<? extends IInternalDirectoryItem>> T open(int blockChainHead,
+                                                                                          boolean skipCheckBlockChainHead,
+                                                                                          IBlockManager blockManager,
+                                                                                          IOpener<T> opener)
             throws FileFileSystemException {
 
         IBlockFile entry = ErrorHandlingHelper
@@ -352,13 +335,11 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
                 "Directory entry fixed-size data read error");// TODO
 
         int flags = entryFixedSizeData.getInt();
-        boolean isFile = flags == FILE_FLAGS;
-        boolean isDirectory = flags == DIRECTORY_FLAGS;
+        boolean isFile = flags == FILE_FLAGS_VALUE;
+        boolean isDirectory = flags == DIRECTORY_FLAGS_VALUE;
         if (!isFile && !isDirectory) {
             throw new FileFileSystemException(Messages.BAD_DIRECTORY_ENTRY_FLAGS_ERROR);
         }
-
-        checker.check(isDirectory);
 
         long contentSize = entryFixedSizeData.getLong();
         int contentBlockChainHead = entryFixedSizeData.getInt();
@@ -373,27 +354,10 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
         return IOUtilities.createReadAndFlipBuffer(size, file::read, errorMessage);
     }
 
-    private static void checkAny(boolean isDirectory) throws FileFileSystemException {
-    }
-
-    protected static void checkIsDirectory(boolean isDirectory) throws FileFileSystemException {
-        if (!isDirectory) {
-            throw new FileFileSystemException("Directory entry is file directory entry");// TODO
-        }
-    }
-
-    private static IOpener<IDirectoryEntry> getOpenerAny() {
-        return getOpener(DirectoryEntry::createForOpenAny);
-    }
-
-    private static <T extends IDirectoryEntry> IOpener<T> getOpener(ICreatorForOpen<T> creator) {
-        return (entry, isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager) -> open(entry,
-                isDirectory, contentSize, contentBlockChainHead, nameSize, blockManager, creator);
-    }
-
-    private static <T extends IDirectoryEntry> T open(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                      int contentBlockChainHead, int nameSize,
-                                                      IBlockManager blockManager, ICreatorForOpen<T> creator)
+    private static IDirectoryEntry<? extends IInternalDirectoryItem> openAny(IBlockFile entry, boolean isDirectory,
+                                                                             long contentSize,
+                                                                             int contentBlockChainHead, int nameSize,
+                                                                             IBlockManager blockManager)
             throws FileFileSystemException {
 
         if (nameSize == 0) {
@@ -406,13 +370,6 @@ public abstract class DirectoryEntry implements IDirectoryEntry {
         byte[] nameBytes = new byte[nameSize];
         entryName.get(nameBytes);
         String name = new String(nameBytes, StandardCharsets.UTF_8);
-
-        return creator.create(entry, isDirectory, contentSize, contentBlockChainHead, name, blockManager);
-    }
-
-    private static IDirectoryEntry createForOpenAny(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                    int contentBlockChainHead, String name,
-                                                    IBlockManager blockManager) {
 
         return isDirectory ?
                 new DirectoryDirectoryEntry(entry, contentSize, contentBlockChainHead, name, blockManager) :

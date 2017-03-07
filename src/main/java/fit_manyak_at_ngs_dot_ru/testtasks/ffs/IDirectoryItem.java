@@ -6,6 +6,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IDirectoryItem extends ICommonDirectoryEntry, ICloseable {
+public interface IDirectoryItem extends ICommonDirectoryEntry, IEmptyCheckable, ICloseable {
+    public boolean isDirectory();
+
     public IDirectory getParentDirectory();
 }

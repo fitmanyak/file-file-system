@@ -10,6 +10,10 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IDirectoryEntry extends ICommonDirectoryEntry, IBlockChainBased {
+public interface IDirectoryEntry<T extends IInternalDirectoryItem> extends ICommonDirectoryEntry, IBlockChainBased {
     public IDirectFile getContent() throws FileFileSystemException;
+
+    public IBlockManager getBlockManager();
+
+    public T getItem(IInternalDirectory parentDirectory);
 }

@@ -10,7 +10,9 @@ import java.nio.ByteBuffer;
  *         Created on 04.03.2017.
  */
 
-public class RootDirectoryDirectoryEntry extends DirectoryEntry implements IRootDirectoryDirectoryEntry {
+public class RootDirectoryDirectoryEntry extends DirectoryEntry<IInternalRootDirectory>
+        implements IRootDirectoryDirectoryEntry {
+
     private static final String NAME = "";
     private static final byte[] NAME_BYTES = new byte[0];
 
@@ -21,27 +23,37 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry implements IRoot
     }
 
     @Override
-    public boolean isDirectory() {
-        return true;
-    }
-
-    @Override
     public void setName(String newName) throws FileFileSystemException {
         throw new UnsupportedOperationException("Can't change root directory name");// TODO
     }
 
+    @Override
+    public void remove() throws FileFileSystemException {
+        throw new UnsupportedOperationException("Can't remove root directory");// TODO
+    }
+
+    @Override
+    public IInternalRootDirectory getItem(IInternalDirectory parentDirectory) {
+        throw new UnsupportedOperationException("Can't get root directory from entry");// TODO
+    }
+
     public static void format(ByteBuffer block) {
-        fillNewEntryData(block, DIRECTORY_FLAGS, NAME_BYTES);
+        fillNewEntryData(block, DIRECTORY_FLAGS_VALUE, NAME_BYTES);
     }
 
     public static IRootDirectoryDirectoryEntry open(IBlockManager blockManager) throws FileFileSystemException {
         return open(IBlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, true, blockManager,
-                DirectoryEntry::checkIsDirectory, RootDirectoryDirectoryEntry::open);
+                RootDirectoryDirectoryEntry::open);
     }
 
     private static IRootDirectoryDirectoryEntry open(IBlockFile entry, boolean isDirectory, long contentSize,
-                                                    int contentBlockChainHead, int nameSize, IBlockManager blockManager)
+                                                     int contentBlockChainHead, int nameSize,
+                                                     IBlockManager blockManager)
             throws FileFileSystemException {
+
+        if (!isDirectory) {
+            throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR);
+        }
 
         if (nameSize != 0) {
             throw new FileFileSystemException(Messages.BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR);

@@ -21,19 +21,19 @@ import java.util.function.Consumer;
 
 public class BlockManager implements IBlockManager {
     private static final int SIGNATURE_SIZE = 2;
-    private static final short SIGNATURE = (short) 0xFFF5;
+    private static final short SIGNATURE_VALUE = (short) 0xFFF5;
 
     private static final int BLOCK_SIZE_RATIO_SIZE = 1;
-    private static final byte BLOCK_SIZE_RATIO = 0;
+    private static final byte BLOCK_SIZE_RATIO_VALUE = 0;
     private static final int BLOCK_SIZE = 512;
-    private static final int BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1;
-    private static final int BLOCK_SIZE_EXPONENT = 9;
+    private static final long BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1L;
+    private static final long BLOCK_SIZE_EXPONENT = 9L;
 
     private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
-    private static final byte BLOCK_INDEX_SIZE_EXPONENT = 0;
+    private static final byte BLOCK_INDEX_SIZE_EXPONENT_VALUE = 0;
 
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
-    private static final byte CONTENT_SIZE_SIZE_EXPONENT = 0;
+    private static final byte CONTENT_SIZE_SIZE_EXPONENT_VALUE = 0;
 
     private static final int SIGNATURE_AND_GEOMETRY_SIZE =
             SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
@@ -92,6 +92,11 @@ public class BlockManager implements IBlockManager {
         }
 
         @Override
+        public boolean isEmpty() {
+            return size == 0L;
+        }
+
+        @Override
         public long getSize() {
             return size;
         }
@@ -141,7 +146,7 @@ public class BlockManager implements IBlockManager {
         private void resizeWithIncrease(int withinChainIndex, int blockChainLength, int newBlockChainLength)
                 throws FileFileSystemException {
 
-            if (size == 0L) {
+            if (isEmpty()) {
                 blockChainHead = allocate(newBlockChainLength);
                 blockIndex = blockChainHead;
             } else {
@@ -155,7 +160,7 @@ public class BlockManager implements IBlockManager {
         private void decreaseSize(long newSize) throws FileFileSystemException {
             resize(newSize, this::resizeWithDecrease);
 
-            if (size == 0L) {
+            if (isEmpty()) {
                 reset();
             } else if (position > size) {
                 setPosition(size);
@@ -311,11 +316,6 @@ public class BlockManager implements IBlockManager {
         }
 
         @Override
-        public boolean isEmpty() {
-            return getSize() == 0L;
-        }
-
-        @Override
         public void setCalculatedSize(long newSize) {
             size = newSize;
         }
@@ -379,7 +379,7 @@ public class BlockManager implements IBlockManager {
     }
 
     private static int getRequiredBlockCount(long size) {
-        return (int) (size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT;
+        return (int) ((size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT);
     }
 
     private int allocate(int requiredBlockCount) throws FileFileSystemException {
@@ -650,10 +650,10 @@ public class BlockManager implements IBlockManager {
 
         int blockCount = (int) blockCountLong;
         ByteBuffer fixedSizeData = ByteBuffer.allocateDirect(FIXED_SIZE_DATA_SIZE);
-        fixedSizeData.putShort(SIGNATURE);
-        fixedSizeData.put(BLOCK_SIZE_RATIO);
-        fixedSizeData.put(BLOCK_INDEX_SIZE_EXPONENT);
-        fixedSizeData.put(CONTENT_SIZE_SIZE_EXPONENT);
+        fixedSizeData.putShort(SIGNATURE_VALUE);
+        fixedSizeData.put(BLOCK_SIZE_RATIO_VALUE);
+        fixedSizeData.put(BLOCK_INDEX_SIZE_EXPONENT_VALUE);
+        fixedSizeData.put(CONTENT_SIZE_SIZE_EXPONENT_VALUE);
         fixedSizeData.putInt(blockCount);
         fixedSizeData.putInt(blockCount - ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
         fixedSizeData.putInt(ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
@@ -703,19 +703,19 @@ public class BlockManager implements IBlockManager {
     private static IBlockManager mount(FileChannel channel) throws FileFileSystemException {
         ByteBuffer fixedSizeData =
                 createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, channel, Messages.FIXED_SIZE_DATA_READ_ERROR);
-        if (fixedSizeData.getShort() != SIGNATURE) {
+        if (fixedSizeData.getShort() != SIGNATURE_VALUE) {
             throw new FileFileSystemException(Messages.BAD_SIGNATURE_ERROR);
         }
 
-        if (fixedSizeData.get() != BLOCK_SIZE_RATIO) {
+        if (fixedSizeData.get() != BLOCK_SIZE_RATIO_VALUE) {
             throw new FileFileSystemException(Messages.BAD_BLOCK_SIZE_RATIO_ERROR);
         }
 
-        if (fixedSizeData.get() != BLOCK_INDEX_SIZE_EXPONENT) {
+        if (fixedSizeData.get() != BLOCK_INDEX_SIZE_EXPONENT_VALUE) {
             throw new FileFileSystemException(Messages.BAD_BLOCK_INDEX_SIZE_EXPONENT_ERROR);
         }
 
-        if (fixedSizeData.get() != CONTENT_SIZE_SIZE_EXPONENT) {
+        if (fixedSizeData.get() != CONTENT_SIZE_SIZE_EXPONENT_VALUE) {
             throw new FileFileSystemException(Messages.BAD_CONTENT_SIZE_SIZE_EXPONENT_ERROR);
         }
 

@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface ICommonFile {
+public interface ICommonFile extends IEmptyCheckable {
     public long getSize() throws FileFileSystemException;
     public void setSize(long newSize) throws FileFileSystemException;
 

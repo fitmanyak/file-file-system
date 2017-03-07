@@ -11,6 +11,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICloseableSpaceInformer;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface IBlockManager extends ICloseableSpaceInformer {
     public static final int BLOCK_INDEX_SIZE = 4;
+    public static final long BLOCK_INDEX_SIZE_EXPONENT = 2;
 
     public static final int CONTENT_SIZE_SIZE = 8;
 

@@ -10,7 +10,5 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRemovable;
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 public interface IBlockFile extends IDirectFile, ICloseable, IRemovable, IBlockChainBased {
-    public boolean isEmpty();
-
     public void setCalculatedSize(long newSize);
 }

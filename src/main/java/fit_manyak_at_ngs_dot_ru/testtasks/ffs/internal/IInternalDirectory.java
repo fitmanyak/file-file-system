@@ -9,7 +9,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IParentDirectory extends IDirectory {
+public interface IInternalDirectory extends IDirectory, IInternalDirectoryItem {
     public void checkNameUnique(String name) throws FileFileSystemException;
 
     public void removeItem(int entryBlockChainHead) throws FileFileSystemException;
