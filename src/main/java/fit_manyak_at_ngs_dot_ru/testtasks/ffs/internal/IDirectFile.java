@@ -1,6 +1,9 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.ICommonFile;
+
+import java.nio.ByteBuffer;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -20,4 +23,9 @@ public interface IDirectFile extends ICommonFile {
 
     @Override
     public void reset();
+
+    public void savePosition(Position saved);
+    public void setPosition(Position newPosition);
+
+    public int write(Position newPosition, ByteBuffer source) throws FileFileSystemException;
 }

@@ -5,6 +5,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectoryItem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IActionWithArgument;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
 
 import java.nio.ByteBuffer;
@@ -53,10 +54,17 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
 
     private final ByteBuffer subEntryBlockChainHead;
 
+    private final Position writePosition;
+    private final Position readPosition;
+
     protected BaseDirectory(TEntry entry, IInternalDirectory parentDirectory) {
         super(entry, parentDirectory);
 
         subEntryBlockChainHead = ByteBuffer.allocateDirect(IBlockManager.BLOCK_INDEX_SIZE);
+
+        int blockChainHead = entry.getBlockChainHead();
+        writePosition = new Position(blockChainHead);
+        readPosition = new Position(blockChainHead);
     }
 
     @Override
@@ -94,11 +102,16 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
         IDirectFile content = checkNameUniqueInternal(name);
 
         T item = creator.create(name, this, getBlockManger());
-        subEntryBlockChainHead.putInt(item.getBlockChainHead());
-        IOUtilities.flipBufferAndWrite(subEntryBlockChainHead, source -> content.write(source),
-                "Directory content write error");// TODO
+        writeSubEntryBlockChainHead(item.getBlockChainHead(), content::write);
 
         return item;
+    }
+
+    private void writeSubEntryBlockChainHead(int blockChainHead, IActionWithArgument<ByteBuffer> writeAction)
+            throws FileFileSystemException {
+
+        subEntryBlockChainHead.putInt(blockChainHead);
+        IOUtilities.flipBufferAndWrite(subEntryBlockChainHead, writeAction, "Directory content write error");// TODO
     }
 
     @Override
@@ -124,12 +137,20 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private SubEntryIterationContext iterateOverSubEntries(ISubEntryVisitor visitor) throws FileFileSystemException {
         IDirectFile content = getContent();
         content.reset();
+        content.savePosition(writePosition);
 
         SubEntryIterationContext context =
                 new SubEntryIterationContext(content, (content.getSize() >> IBlockManager.BLOCK_INDEX_SIZE_EXPONENT));
+        iterateOverSubEntries(context, visitor);
+
+        return context;
+    }
+
+    private void iterateOverSubEntries(SubEntryIterationContext context, ISubEntryVisitor visitor)
+            throws FileFileSystemException {
         for (; context.index < context.count; context.index++) {
-            IOUtilities.readAndFlipBuffer(subEntryBlockChainHead, destination -> content.read(destination),
-                    "Directory content read error");
+            IOUtilities
+                    .readAndFlipBuffer(subEntryBlockChainHead, context.content::read, "Directory content read error");
             context.blockChainHead = subEntryBlockChainHead.getInt();
             subEntryBlockChainHead.clear();
 
@@ -137,8 +158,6 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
                 break;
             }
         }
-
-        return context;
     }
 
     private boolean checkSubEntryNameEquals(String name, SubEntryIterationContext context)
@@ -202,15 +221,33 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
             throw new FileFileSystemException("Removed entry is missing");// TODO
         }
 
-        // TODO
+        context.index++;
+
+        iterateOverSubEntries(context, this::shiftSubEntryBlockChainHeadLeft);
+
+        context.content.setSize(context.content.getSize() - IBlockManager.BLOCK_INDEX_SIZE);
     }
 
-    private static boolean checkSubEntryBlockChainHeadEquals(int entryBlockChainHead,
-                                                             SubEntryIterationContext context) {
+    private boolean checkSubEntryBlockChainHeadEquals(int entryBlockChainHead,
+                                                      SubEntryIterationContext context) {
 
         if (context.blockChainHead == entryBlockChainHead) {
             return true;
         }
+
+        context.content.savePosition(writePosition);
+
+        return false;
+    }
+
+    private boolean shiftSubEntryBlockChainHeadLeft(SubEntryIterationContext context) throws FileFileSystemException {
+        context.content.savePosition(readPosition);
+
+        writeSubEntryBlockChainHead(context.blockChainHead, source -> context.content.write(writePosition, source));
+
+        context.content.savePosition(writePosition);
+
+        context.content.setPosition(readPosition);
 
         return false;
     }

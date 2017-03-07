@@ -75,6 +75,31 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         }
 
         @Override
+        public void savePosition(Position saved) {
+            delegate.savePosition(saved);
+        }
+
+        @Override
+        public void setPosition(Position newPosition) {
+            delegate.setPosition(newPosition);
+        }
+
+        @Override
+        public int write(Position newPosition, ByteBuffer source) throws FileFileSystemException {
+            return performUpdatedContentDataOperation(source, src -> delegate.write(newPosition, src));
+        }
+
+        private int performUpdatedContentDataOperation(ByteBuffer buffer, IOperationWithArgument<ByteBuffer> operation)
+                throws FileFileSystemException {
+
+            int result = operation.perform(buffer);
+
+            updateContentData();
+
+            return result;
+        }
+
+        @Override
         public int read(ByteBuffer destination) throws FileFileSystemException {
             return delegate.read(destination);
         }
@@ -87,16 +112,6 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         @Override
         public int write(ByteBuffer source) throws FileFileSystemException {
             return performUpdatedContentDataOperation(source, delegate::write);
-        }
-
-        private int performUpdatedContentDataOperation(ByteBuffer buffer, IOperationWithArgument<ByteBuffer> operation)
-                throws FileFileSystemException {
-
-            int result = operation.perform(buffer);
-
-            updateContentData();
-
-            return result;
         }
 
         @Override
@@ -303,7 +318,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
         fillNewEntryData(entryData, flags, nameBytes);
-        IOUtilities.flipBufferAndWrite(entryData, src -> entry.write(src), "Directory entry data write error");// TODO
+        IOUtilities.flipBufferAndWrite(entryData, entry::write, "Directory entry data write error");// TODO
 
         return creator.create(entry, name, blockManager);
     }

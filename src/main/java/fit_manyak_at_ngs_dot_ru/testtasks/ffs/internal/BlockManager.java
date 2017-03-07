@@ -76,7 +76,7 @@ public class BlockManager implements IBlockManager {
         private long size;
         private int blockChainHead;
 
-        private Position position;
+        private final Position position;
 
         private BlockFile() {
             this(0L, NULL_BLOCK_INDEX);
@@ -221,6 +221,23 @@ public class BlockManager implements IBlockManager {
         @Override
         public void reset() {
             position.reset(blockChainHead);
+        }
+
+        @Override
+        public void savePosition(Position saved) {
+            saved.set(position);
+        }
+
+        @Override
+        public void setPosition(Position newPosition) {
+            position.set(newPosition);
+        }
+
+        @Override
+        public int write(Position newPosition, ByteBuffer source) throws FileFileSystemException {
+            setPosition(newPosition);
+
+            return write(source);
         }
 
         @Override
