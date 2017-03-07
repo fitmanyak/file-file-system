@@ -76,9 +76,7 @@ public class BlockManager implements IBlockManager {
         private long size;
         private int blockChainHead;
 
-        private long position;
-
-        private int blockIndex;
+        private Position position;
 
         private BlockFile() {
             this(0L, NULL_BLOCK_INDEX);
@@ -88,7 +86,7 @@ public class BlockManager implements IBlockManager {
             this.size = size;
             this.blockChainHead = blockChainHead;
 
-            reset();
+            this.position = new Position(blockChainHead);
         }
 
         @Override
@@ -123,7 +121,7 @@ public class BlockManager implements IBlockManager {
         }
 
         private int getWithinChainIndex() {
-            int withinChainIndex = (int) (position >> BLOCK_SIZE_EXPONENT);
+            int withinChainIndex = (int) (position.getPosition() >> BLOCK_SIZE_EXPONENT);
             if (startNextBlock()) {
                 withinChainIndex--;
             }
@@ -136,11 +134,11 @@ public class BlockManager implements IBlockManager {
         }
 
         private boolean startNextBlock(int withinBlockPosition) {
-            return position != 0L && withinBlockPosition == 0;
+            return position.getPosition() != 0L && withinBlockPosition == 0;
         }
 
         private int getWithinBlockPosition() {
-            return (int) (position & BLOCK_SIZE_MINUS_ONE);
+            return (int) (position.getPosition() & BLOCK_SIZE_MINUS_ONE);
         }
 
         private void resizeWithIncrease(int withinChainIndex, int blockChainLength, int newBlockChainLength)
@@ -148,11 +146,11 @@ public class BlockManager implements IBlockManager {
 
             if (isEmpty()) {
                 blockChainHead = allocate(newBlockChainLength);
-                blockIndex = blockChainHead;
+                position.setBlockIndex(blockChainHead);
             } else {
                 int additionalBlockCount = newBlockChainLength - blockChainLength;
                 if (additionalBlockCount != 0) {
-                    reallocate(blockIndex, (blockChainLength - withinChainIndex), additionalBlockCount);
+                    reallocate(position.getBlockIndex(), (blockChainLength - withinChainIndex), additionalBlockCount);
                 }
             }
         }
@@ -162,7 +160,7 @@ public class BlockManager implements IBlockManager {
 
             if (isEmpty()) {
                 reset();
-            } else if (position > size) {
+            } else if (position.getPosition() > size) {
                 setPosition(size);
             }
         }
@@ -173,20 +171,22 @@ public class BlockManager implements IBlockManager {
             int releasedBlockCount = blockChainLength - newBlockChainLength;
             if (releasedBlockCount != 0) {
                 if (newBlockChainLength == 0) {
-                    deallocate(blockChainHead, blockChainLength, blockIndex, (blockChainLength - withinChainIndex));
+                    deallocate(blockChainHead, blockChainLength, position.getBlockIndex(),
+                            (blockChainLength - withinChainIndex));
                     blockChainHead = NULL_BLOCK_INDEX;
                 } else if (Integer.compareUnsigned(withinChainIndex, newBlockChainLength) < 0) {
-                    deallocate(blockIndex, (newBlockChainLength - withinChainIndex), releasedBlockCount);
+                    deallocate(position.getBlockIndex(), (newBlockChainLength - withinChainIndex), releasedBlockCount);
                 } else {
-                    deallocate(blockChainHead, newBlockChainLength, blockIndex, (blockChainLength - withinChainIndex),
-                            releasedBlockCount, (newBlockChainLength == withinChainIndex));
+                    deallocate(blockChainHead, newBlockChainLength, position.getBlockIndex(),
+                            (blockChainLength - withinChainIndex), releasedBlockCount,
+                            (newBlockChainLength == withinChainIndex));
                 }
             }
         }
 
         @Override
         public long getPosition() {
-            return position;
+            return position.getPosition();
         }
 
         @Override
@@ -199,20 +199,20 @@ public class BlockManager implements IBlockManager {
                 throw new FileFileSystemException("Big block file position");// TODO
             }
 
-            if (newPosition == position) {
+            if (position.getPosition() == newPosition) {
                 return;
             }
 
             int withinChainIndex = getWithinChainIndex();
 
-            position = newPosition;
+            position.setPosition(newPosition);
 
             int newWithinChainIndex = getWithinChainIndex();
 
             try {
-                blockIndex = Integer.compareUnsigned(newWithinChainIndex, withinChainIndex) < 0 ?
+                position.setBlockIndex(Integer.compareUnsigned(newWithinChainIndex, withinChainIndex) < 0 ?
                         getNextBlockIndex(blockChainHead, newWithinChainIndex) :
-                        getNextBlockIndex(blockIndex, (newWithinChainIndex - withinChainIndex));
+                        getNextBlockIndex(position.getBlockIndex(), (newWithinChainIndex - withinChainIndex)));
             } catch (Throwable t) {
                 reset();
             }
@@ -220,9 +220,7 @@ public class BlockManager implements IBlockManager {
 
         @Override
         public void reset() {
-            position = 0L;
-
-            blockIndex = blockChainHead;
+            position.reset(blockChainHead);
         }
 
         @Override
@@ -243,8 +241,8 @@ public class BlockManager implements IBlockManager {
 
             int totalProcessed = 0;
             int bufferRemaining = buffer.remaining();
-            while (bufferRemaining != 0 && position != size) {
-                int actualBlockIndex = blockIndex;
+            while (bufferRemaining != 0 && position.getPosition() != size) {
+                int actualBlockIndex = position.getBlockIndex();
                 int withinBlockPosition = getWithinBlockPosition();
                 if (startNextBlock(withinBlockPosition)) {
                     actualBlockIndex = getNextBlockIndex(actualBlockIndex);
@@ -258,9 +256,8 @@ public class BlockManager implements IBlockManager {
                 totalProcessed += toProcess;
                 bufferRemaining -= toProcess;
 
-                position += toProcess;
-
-                blockIndex = actualBlockIndex;
+                position.setPosition(position.getPosition() + toProcess);
+                position.setBlockIndex(actualBlockIndex);
             }
 
             return totalProcessed;
@@ -282,7 +279,7 @@ public class BlockManager implements IBlockManager {
 
         @Override
         public int write(ByteBuffer source) throws FileFileSystemException {
-            long newPosition = position + source.remaining();
+            long newPosition = position.getPosition() + source.remaining();
             if (newPosition > size) {
                 increaseSize(newPosition);
             }
@@ -638,7 +635,8 @@ public class BlockManager implements IBlockManager {
             throws FileFileSystemException {
 
         long blockCountLong = (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
-        ErrorHandlingHelper.performAction(() -> file.setLength(getTotalSize(blockCountLong)), "File size set error");// TODO
+        ErrorHandlingHelper
+                .performAction(() -> file.setLength(getTotalSize(blockCountLong)), "File size set error");// TODO
 
         ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, "File channel get error",
                 channel -> format(channel, blockCountLong, rootDirectoryEntryFormatter),
