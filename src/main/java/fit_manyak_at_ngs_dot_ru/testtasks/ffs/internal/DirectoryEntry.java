@@ -146,7 +146,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
     private Content content;
     private long contentSize;
     private int contentBlockChainHead;
-    private ByteBuffer contentData;
+    private final ByteBuffer contentData;
 
     private String name;
 
