@@ -90,4 +90,8 @@ public class Messages {
     public static final String CANT_REMOVE_ROOT_DIRECTORY_ERROR = BUNDLE.getString("CANT_REMOVE_ROOT_DIRECTORY_ERROR");
     public static final String CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR =
             BUNDLE.getString("CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR");
+
+    public static final String DIRECTORY_ITEM_RENAME_ERROR = BUNDLE.getString("DIRECTORY_ITEM_RENAME_ERROR");
+    public static final String DIRECTORY_ITEM_REMOVE_ERROR = BUNDLE.getString("DIRECTORY_ITEM_REMOVE_ERROR");
+    public static final String DIRECTORY_ITEM_CONTENT_GET_ERROR = BUNDLE.getString("DIRECTORY_ITEM_CONTENT_GET_ERROR");
 }

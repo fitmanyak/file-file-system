@@ -2,8 +2,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
-import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IProvider;
 
 /**
  * @author Ivan Buryak {@literal fit_manyak@ngs.ru}
@@ -36,7 +36,7 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
 
     @Override
     public void setName(String newName) throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(() -> changeName(newName), "Directory item name change error");// TODO
+        ErrorHandlingHelper.performAction(() -> changeName(newName), Messages.DIRECTORY_ITEM_RENAME_ERROR);
     }
 
     private void changeName(String newName) throws FileFileSystemException {
@@ -47,7 +47,7 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
 
     @Override
     public void remove() throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(this::performRemove, "Directory item remove error");// TODO
+        ErrorHandlingHelper.performAction(this::performRemove, Messages.DIRECTORY_ITEM_REMOVE_ERROR);
     }
 
     private void performRemove() throws FileFileSystemException {
@@ -63,12 +63,12 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
     }
 
     protected IDirectFile getContent() throws FileFileSystemException {
-        return ErrorHandlingHelper.get(entry::getContent, "Directory item get content error");// TODO
+        return ErrorHandlingHelper.get(entry::getContent, Messages.DIRECTORY_ITEM_CONTENT_GET_ERROR);
     }
 
     @Override
     public void close() throws FileFileSystemException {
-        // TODO
+        // TODO Necessary to support parallel operations
     }
 
     @Override
