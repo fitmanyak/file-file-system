@@ -6,6 +6,6 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IBlockChainBased {
+interface IBlockChainBased {
     public int getBlockChainHead();
 }

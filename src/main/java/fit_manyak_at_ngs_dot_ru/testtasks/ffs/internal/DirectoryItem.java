@@ -15,7 +15,7 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
-    protected interface IEntryCreator<TItem extends IInternalDirectoryItem, TEntry extends IDirectoryEntry<TItem>> {
+    interface IEntryCreator<TItem extends IInternalDirectoryItem, TEntry extends IDirectoryEntry<TItem>> {
         public TEntry create(String name, IBlockManager blockManager) throws FileFileSystemException;
     }
 
@@ -23,7 +23,7 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
 
     private final IInternalDirectory parentDirectory;
 
-    protected DirectoryItem(TEntry entry, IInternalDirectory parentDirectory) {
+    DirectoryItem(TEntry entry, IInternalDirectory parentDirectory) {
         this.entry = entry;
 
         this.parentDirectory = parentDirectory;
@@ -62,7 +62,7 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
         return getContent().isEmpty();
     }
 
-    protected IDirectFile getContent() throws FileFileSystemException {
+    IDirectFile getContent() throws FileFileSystemException {
         return ErrorHandlingHelper.get(entry::getContent, Messages.DIRECTORY_ITEM_CONTENT_GET_ERROR);
     }
 
@@ -81,13 +81,16 @@ public abstract class DirectoryItem<TItem extends IInternalDirectoryItem, TEntry
         return entry.getBlockChainHead();
     }
 
-    protected IBlockManager getBlockManger() {
+    IBlockManager getBlockManger() {
         return entry.getBlockManager();
     }
 
-    protected static <TItem extends IInternalDirectoryItem, TEntry extends IDirectoryEntry<TItem>> TItem createItem(
-            String name, IInternalDirectory parentDirectory, IBlockManager blockManager,
-            IEntryCreator<TItem, TEntry> creator, String errorMessage) throws FileFileSystemException {
+    static <TItem extends IInternalDirectoryItem, TEntry extends IDirectoryEntry<TItem>> TItem createItem(String name,
+                                                                                                          IInternalDirectory parentDirectory,
+                                                                                                          IBlockManager blockManager,
+                                                                                                          IEntryCreator<TItem, TEntry> creator,
+                                                                                                          String errorMessage)
+            throws FileFileSystemException {
 
         return ErrorHandlingHelper.get(() -> creator.create(name, blockManager), errorMessage).getItem(parentDirectory);
     }

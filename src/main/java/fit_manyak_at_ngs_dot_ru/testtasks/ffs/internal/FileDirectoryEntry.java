@@ -12,8 +12,8 @@ public class FileDirectoryEntry extends DirectoryEntry<IInternalFile> implements
         super(entry, name, blockManager);
     }
 
-    protected FileDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
-                                 IBlockManager blockManager) {
+    FileDirectoryEntry(IBlockFile entry, long contentSize, int contentBlockChainHead, String name,
+                       IBlockManager blockManager) {
 
         super(entry, contentSize, contentBlockChainHead, name, blockManager);
     }

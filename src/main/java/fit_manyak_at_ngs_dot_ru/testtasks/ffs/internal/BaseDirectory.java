@@ -58,7 +58,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private final Position writePosition;
     private final Position readPosition;
 
-    protected BaseDirectory(TEntry entry, IInternalDirectory parentDirectory) {
+    BaseDirectory(TEntry entry, IInternalDirectory parentDirectory) {
         super(entry, parentDirectory);
 
         subEntryBlockChainHead = ByteBuffer.allocateDirect(IBlockManager.BLOCK_INDEX_SIZE);
@@ -262,7 +262,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     }
 
     @Override
-    protected IDirectFile getContent() throws FileFileSystemException {
+    IDirectFile getContent() throws FileFileSystemException {
         IDirectFile content = super.getContent();
         if ((content.getSize() & BLOCK_INDEX_SIZE_MINUS_ONE) != 0L) {
             throw new FileFileSystemException(Messages.BAD_DIRECTORY_CONTENT_SIZE_ERROR);

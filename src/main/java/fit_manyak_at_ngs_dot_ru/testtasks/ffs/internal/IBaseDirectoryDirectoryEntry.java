@@ -5,5 +5,5 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
  *         Created on 07.03.2017.
  */
 
-public interface IBaseDirectoryDirectoryEntry<T extends IInternalDirectory> extends IDirectoryEntry<T> {
+interface IBaseDirectoryDirectoryEntry<T extends IInternalDirectory> extends IDirectoryEntry<T> {
 }

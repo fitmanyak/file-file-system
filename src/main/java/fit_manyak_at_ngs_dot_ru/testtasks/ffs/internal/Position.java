@@ -5,7 +5,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
  *         Created on 07.03.2017.
  */
 
-public class Position {
+class Position {
     private long position;
     private int blockIndex;
 

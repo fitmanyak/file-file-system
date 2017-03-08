@@ -102,7 +102,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
         return performWriteOperation(content -> content.write(newPosition, source));
     }
 
-    protected static IInternalFile create(String name, IInternalDirectory parentDirectory, IBlockManager blockManager)
+    static IInternalFile create(String name, IInternalDirectory parentDirectory, IBlockManager blockManager)
             throws FileFileSystemException {
 
         return createItem(name, parentDirectory, blockManager, FileDirectoryEntry::create, Messages.FILE_CREATE_ERROR);

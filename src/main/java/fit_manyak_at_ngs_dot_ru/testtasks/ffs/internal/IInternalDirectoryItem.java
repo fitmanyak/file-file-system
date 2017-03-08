@@ -9,7 +9,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectoryItem;
  */
 
 @SuppressWarnings("UnnecessaryInterfaceModifier")
-public interface IInternalDirectoryItem extends IDirectoryItem, IBlockChainBased {
+interface IInternalDirectoryItem extends IDirectoryItem, IBlockChainBased {
     public IInternalFile getAsFile() throws FileFileSystemException;
     public IInternalDirectory getAsDirectory() throws FileFileSystemException;
 }
