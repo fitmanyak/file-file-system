@@ -37,11 +37,11 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry<IInternalRootDir
         throw new UnsupportedOperationException(Messages.CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR);
     }
 
-    public static void format(ByteBuffer block) {
+    static void format(ByteBuffer block) {
         fillNewEntryData(block, DIRECTORY_FLAGS_VALUE, NAME_BYTES);
     }
 
-    public static IRootDirectoryDirectoryEntry open(IBlockManager blockManager) throws FileFileSystemException {
+    static IRootDirectoryDirectoryEntry open(IBlockManager blockManager) throws FileFileSystemException {
         return open(IBlockManager.ROOT_DIRECTORY_ENTRY_BLOCK_INDEX, true, blockManager,
                 RootDirectoryDirectoryEntry::open);
     }

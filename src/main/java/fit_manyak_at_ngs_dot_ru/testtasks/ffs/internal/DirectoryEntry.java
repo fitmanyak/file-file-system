@@ -18,7 +18,8 @@ import java.nio.charset.StandardCharsets;
 public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implements IDirectoryEntry<T> {
     private static final int FLAGS_SIZE = 4;
     static final int FILE_FLAGS_VALUE = 0;
-    static final int DIRECTORY_FLAGS_VALUE = 1;
+    @SuppressWarnings("WeakerAccess")
+    public static final int DIRECTORY_FLAGS_VALUE = 1;
 
     private static final int CONTENT_DATA_SIZE = IBlockManager.CONTENT_SIZE_SIZE + IBlockManager.BLOCK_INDEX_SIZE;
     private static final long CONTENT_DATA_POSITION = FLAGS_SIZE;
@@ -211,7 +212,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         }
     }
 
-    public static void checkNameNotEmpty(String name) {
+    static void checkNameNotEmpty(String name) {
         if (name.isEmpty()) {
             throw new IllegalArgumentException(Messages.EMPTY_DIRECTORY_ENTRY_NAME_ERROR);
         }
@@ -329,8 +330,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         fillNewNameData(entryData, nameBytes);
     }
 
-    public static IDirectoryEntry<? extends IInternalDirectoryItem> openAny(int blockChainHead,
-                                                                            IBlockManager blockManager)
+    static IDirectoryEntry<? extends IInternalDirectoryItem> openAny(int blockChainHead, IBlockManager blockManager)
             throws FileFileSystemException {
 
         return open(blockChainHead, false, blockManager, DirectoryEntry::openAny);

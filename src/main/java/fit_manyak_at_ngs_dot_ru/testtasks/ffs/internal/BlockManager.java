@@ -21,19 +21,24 @@ import java.util.function.Consumer;
 
 public class BlockManager implements IBlockManager {
     private static final int SIGNATURE_SIZE = 2;
-    private static final short SIGNATURE_VALUE = (short) 0xFFF5;
+    @SuppressWarnings("WeakerAccess")
+    public static final short SIGNATURE_VALUE = (short) 0xFFF5;
 
     private static final int BLOCK_SIZE_RATIO_SIZE = 1;
-    private static final byte BLOCK_SIZE_RATIO_VALUE = 0;
-    private static final int BLOCK_SIZE = 512;
+    @SuppressWarnings("WeakerAccess")
+    public static final byte BLOCK_SIZE_RATIO_VALUE = 0;
+    @SuppressWarnings("WeakerAccess")
+    public static final int BLOCK_SIZE = 512;
     private static final long BLOCK_SIZE_MINUS_ONE = BLOCK_SIZE - 1L;
     private static final long BLOCK_SIZE_EXPONENT = 9L;
 
     private static final int BLOCK_INDEX_SIZE_EXPONENT_SIZE = 1;
-    private static final byte BLOCK_INDEX_SIZE_EXPONENT_VALUE = 0;
+    @SuppressWarnings("WeakerAccess")
+    public static final byte BLOCK_INDEX_SIZE_EXPONENT_VALUE = 0;
 
     private static final int CONTENT_SIZE_SIZE_EXPONENT_SIZE = 1;
-    private static final byte CONTENT_SIZE_SIZE_EXPONENT_VALUE = 0;
+    @SuppressWarnings("WeakerAccess")
+    public static final byte CONTENT_SIZE_SIZE_EXPONENT_VALUE = 0;
 
     private static final int SIGNATURE_AND_GEOMETRY_SIZE =
             SIGNATURE_SIZE + BLOCK_SIZE_RATIO_SIZE + BLOCK_INDEX_SIZE_EXPONENT_SIZE + CONTENT_SIZE_SIZE_EXPONENT_SIZE +
@@ -42,22 +47,27 @@ public class BlockManager implements IBlockManager {
     private static final int FREE_BLOCK_DATA_SIZE = BLOCK_INDEX_SIZE + BLOCK_INDEX_SIZE;
     private static final long FREE_BLOCK_DATA_POSITION = SIGNATURE_AND_GEOMETRY_SIZE;
 
-    private static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
+    @SuppressWarnings("WeakerAccess")
+    public static final int FIXED_SIZE_DATA_SIZE = SIGNATURE_AND_GEOMETRY_SIZE + FREE_BLOCK_DATA_SIZE;
 
     private static final int BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE = BLOCK_SIZE + BLOCK_INDEX_SIZE;
 
     private static final int MINIMAL_BLOCK_COUNT = 4;
     private static final long MAXIMAL_BLOCK_COUNT = (1L << (8L * BLOCK_INDEX_SIZE)) - 1L;
-    private static final long MINIMAL_SIZE =
+    @SuppressWarnings("WeakerAccess")
+    public static final long MINIMAL_SIZE =
             FIXED_SIZE_DATA_SIZE + MINIMAL_BLOCK_COUNT * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
-    private static final long MAXIMAL_SIZE =
+    @SuppressWarnings("WeakerAccess")
+    public static final long MAXIMAL_SIZE =
             FIXED_SIZE_DATA_SIZE + MAXIMAL_BLOCK_COUNT * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
 
     private static final long MAXIMAL_BLOCK_FILE_SIZE = MAXIMAL_BLOCK_COUNT * BLOCK_SIZE;
 
-    private static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
+    @SuppressWarnings("WeakerAccess")
+    public static final int ROOT_DIRECTORY_ENTRY_BLOCK_COUNT = 1;
 
-    private static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
+    @SuppressWarnings("WeakerAccess")
+    public static final int FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX = ROOT_DIRECTORY_ENTRY_BLOCK_COUNT + 1;
 
     @SuppressWarnings("UnnecessaryInterfaceModifier")
     @FunctionalInterface
@@ -373,7 +383,8 @@ public class BlockManager implements IBlockManager {
         return getSize(blockCount);
     }
 
-    private static long getSize(int blockCount) {
+    @SuppressWarnings("WeakerAccess")
+    public static long getSize(int blockCount) {
         return Integer.toUnsignedLong(blockCount) * BLOCK_SIZE;
     }
 
@@ -392,7 +403,8 @@ public class BlockManager implements IBlockManager {
         }
     }
 
-    private static int getRequiredBlockCount(long size) {
+    @SuppressWarnings("WeakerAccess")
+    public static int getRequiredBlockCount(long size) {
         return (int) ((size + BLOCK_SIZE_MINUS_ONE) >> BLOCK_SIZE_EXPONENT);
     }
 
@@ -655,13 +667,22 @@ public class BlockManager implements IBlockManager {
                                Consumer<ByteBuffer> rootDirectoryEntryFormatter)
             throws FileFileSystemException {
 
-        long blockCountLong = (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
+        long blockCountLong = getBlockCountLong(size);
         ErrorHandlingHelper
                 .performAction(() -> file.setLength(getTotalSize(blockCountLong)), Messages.FILE_SIZE_SET_ERROR);
 
         ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, Messages.FILE_CHANNEL_GET_ERROR,
                 channel -> format(channel, blockCountLong, rootDirectoryEntryFormatter),
                 Messages.FILE_CHANNEL_CLOSE_ERROR);
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static int getBlockCount(long size) {
+        return (int) getBlockCountLong(size);
+    }
+
+    private static long getBlockCountLong(long size) {
+        return (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
 
     private static void format(FileChannel channel, long blockCountLong,
@@ -681,7 +702,7 @@ public class BlockManager implements IBlockManager {
         ByteBuffer nextBlockIndex = ByteBuffer.allocateDirect(BLOCK_INDEX_SIZE);
         writeNextBlockIndex(NULL_BLOCK_INDEX, nextBlockIndex, channel);
 
-        for (int i = FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX; i < blockCount; i++) {
+        for (int i = FIRST_BLOCK_INITIAL_NEXT_BLOCK_INDEX; Integer.compareUnsigned(i, blockCount) < 0; i++) {
             writeNextBlockIndex(i, nextBlockIndex, channel);
         }
 
@@ -696,7 +717,8 @@ public class BlockManager implements IBlockManager {
         return getTotalSize(Integer.toUnsignedLong(blockCount));
     }
 
-    private static long getTotalSize(long blockCountLong) {
+    @SuppressWarnings("WeakerAccess")
+    public static long getTotalSize(long blockCountLong) {
         return FIXED_SIZE_DATA_SIZE + blockCountLong * BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
     }
 
