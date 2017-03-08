@@ -16,6 +16,7 @@ import java.nio.file.Paths;
  *         Created on 26.02.2017.
  */
 
+@SuppressWarnings("unused")
 public class FileFileSystemTest {
     private static final String PATH = "test.ffs";
 
