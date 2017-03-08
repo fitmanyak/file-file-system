@@ -24,17 +24,17 @@ public class RootDirectoryDirectoryEntry extends DirectoryEntry<IInternalRootDir
 
     @Override
     public void setName(String newName) throws FileFileSystemException {
-        throw new UnsupportedOperationException("Can't change root directory name");// TODO
+        throw new UnsupportedOperationException(Messages.CANT_RENAME_ROOT_DIRECTORY_ERROR);
     }
 
     @Override
     public void remove() throws FileFileSystemException {
-        throw new UnsupportedOperationException("Can't remove root directory");// TODO
+        throw new UnsupportedOperationException(Messages.CANT_REMOVE_ROOT_DIRECTORY_ERROR);
     }
 
     @Override
     public IInternalRootDirectory getItem(IInternalDirectory parentDirectory) {
-        throw new UnsupportedOperationException("Can't get root directory from entry");// TODO
+        throw new UnsupportedOperationException(Messages.CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR);
     }
 
     public static void format(ByteBuffer block) {

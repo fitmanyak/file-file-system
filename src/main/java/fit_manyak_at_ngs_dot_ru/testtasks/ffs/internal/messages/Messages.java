@@ -85,4 +85,9 @@ public class Messages {
     public static final String DIRECTORY_ENTRY_FIXED_SIZE_DATA_READ_ERROR =
             BUNDLE.getString("DIRECTORY_ENTRY_FIXED_SIZE_DATA_READ_ERROR");
     public static final String DIRECTORY_ENTRY_NAME_READ_ERROR = BUNDLE.getString("DIRECTORY_ENTRY_NAME_READ_ERROR");
+
+    public static final String CANT_RENAME_ROOT_DIRECTORY_ERROR = BUNDLE.getString("CANT_RENAME_ROOT_DIRECTORY_ERROR");
+    public static final String CANT_REMOVE_ROOT_DIRECTORY_ERROR = BUNDLE.getString("CANT_REMOVE_ROOT_DIRECTORY_ERROR");
+    public static final String CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR =
+            BUNDLE.getString("CANT_GET_ROOT_DIRECTORY_THROUGH_ENTRY_ERROR");
 }
