@@ -181,7 +181,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
                 contentData.putInt(newContentBlockChainHead);
             }
 
-            flipBufferAndWrite(CONTENT_DATA_POSITION, contentData, "Directory entry content data write error");// TODO
+            flipBufferAndWrite(CONTENT_DATA_POSITION, contentData, Messages.DIRECTORY_ENTRY_CONTENT_DATA_WRITE_ERROR);
 
             contentSize = newContentSize;
             contentBlockChainHead = newContentBlockChainHead;
@@ -205,8 +205,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
             checkNameNotEmpty(newName);
 
             byte[] newNameBytes = getNameBytes(newName);
-            ErrorHandlingHelper
-                    .performAction(() -> changeName(newNameBytes), "Directory entry name change error");// TODO
+            ErrorHandlingHelper.performAction(() -> changeName(newNameBytes), Messages.DIRECTORY_ENTRY_RENAME_ERROR);
 
             name = newName;
         }
@@ -214,14 +213,14 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
     public static void checkNameNotEmpty(String name) throws FileFileSystemException {
         if (name.isEmpty()) {
-            throw new IllegalArgumentException("Empty directory entry name");// TODO
+            throw new IllegalArgumentException(Messages.EMPTY_DIRECTORY_ENTRY_NAME_ERROR);
         }
     }
 
     private static byte[] getNameBytes(String name) {
         byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
         if (nameBytes.length > NAME_MAXIMAL_SIZE) {
-            throw new IllegalArgumentException("Too long directory entry name");// TODO
+            throw new IllegalArgumentException(Messages.TOO_LONG_DIRECTORY_ENTRY_NAME_ERROR);
         }
 
         return nameBytes;
@@ -234,7 +233,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         int newNameDataSize = newEntrySize - WITHOUT_NAME_DATA_SIZE;
         ByteBuffer newNameData = ByteBuffer.allocateDirect(newNameDataSize);
         fillNewNameData(newNameData, newNameBytes);
-        flipBufferAndWrite(NAME_DATA_POSITION, newNameData, "Directory entry name data write error");// TODO
+        flipBufferAndWrite(NAME_DATA_POSITION, newNameData, Messages.DIRECTORY_ENTRY_NAME_DATA_WRITE_ERROR);
     }
 
     private static int getEntrySize(byte[] nameBytes) {
@@ -252,7 +251,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
     @Override
     public void remove() throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(this::performRemove, "Directory entry remove error");// TODO
+        ErrorHandlingHelper.performAction(this::performRemove, Messages.DIRECTORY_ENTRY_REMOVE_ERROR);
     }
 
     private void performRemove() throws FileFileSystemException {
@@ -264,7 +263,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         if (content == null) {
             content = ErrorHandlingHelper
                     .get(() -> new Content(blockManager.openBlockFile(contentSize, contentBlockChainHead)),
-                            "Directory entry content block file open error");// TODO
+                            Messages.DIRECTORY_ENTRY_CONTENT_BLOCK_FILE_OPEN_ERROR);
         }
 
         return content;
@@ -303,9 +302,9 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
         byte[] nameBytes = getNameBytes(name);
         int entrySize = getEntrySize(nameBytes);
 
-        return ErrorHandlingHelper
-                .getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize), "Directory entry create error",
-                        entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));// TODO
+        return ErrorHandlingHelper.getWithCloseableArgument(() -> blockManager.createBlockFile(entrySize),
+                Messages.DIRECTORY_ENTRY_CREATE_ERROR,
+                entry -> create(flags, name, nameBytes, entrySize, entry, blockManager, creator));
     }
 
     private static <T extends IDirectoryEntry<? extends IInternalDirectoryItem>> T create(int flags, String name,
@@ -318,7 +317,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
         ByteBuffer entryData = ByteBuffer.allocateDirect(entrySize);
         fillNewEntryData(entryData, flags, nameBytes);
-        IOUtilities.flipBufferAndWrite(entryData, entry::write, "Directory entry data write error");// TODO
+        IOUtilities.flipBufferAndWrite(entryData, entry::write, Messages.DIRECTORY_ENTRY_DATA_WRITE_ERROR);
 
         return creator.create(entry, name, blockManager);
     }
@@ -345,9 +344,9 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
         IBlockFile entry = ErrorHandlingHelper
                 .get(() -> blockManager.openBlockFile(FIXED_SIZE_DATA_SIZE, blockChainHead, skipCheckBlockChainHead),
-                        "Directory entry block file open error");// TODO
+                        Messages.DIRECTORY_ENTRY_BLOCK_FILE_OPEN_ERROR);
         ByteBuffer entryFixedSizeData = createReadAndFlipBuffer(FIXED_SIZE_DATA_SIZE, entry,
-                "Directory entry fixed-size data read error");// TODO
+                Messages.DIRECTORY_ENTRY_FIXED_SIZE_DATA_READ_ERROR);
 
         int flags = entryFixedSizeData.getInt();
         boolean isFile = flags == FILE_FLAGS_VALUE;
@@ -381,7 +380,7 @@ public abstract class DirectoryEntry<T extends IInternalDirectoryItem> implement
 
         entry.setCalculatedSize(getEntrySize(nameSize));
 
-        ByteBuffer entryName = createReadAndFlipBuffer(nameSize, entry, "Directory entry name read error");// TODO
+        ByteBuffer entryName = createReadAndFlipBuffer(nameSize, entry, Messages.DIRECTORY_ENTRY_NAME_READ_ERROR);
         byte[] nameBytes = new byte[nameSize];
         entryName.get(nameBytes);
         String name = new String(nameBytes, StandardCharsets.UTF_8);
