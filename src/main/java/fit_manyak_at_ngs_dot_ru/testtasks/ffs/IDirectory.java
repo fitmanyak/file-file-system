@@ -7,7 +7,7 @@ import java.util.Collection;
  *         Created on 26.02.2017.
  */
 
-@SuppressWarnings("UnnecessaryInterfaceModifier")
+@SuppressWarnings({"UnnecessaryInterfaceModifier", "unused"})
 public interface IDirectory extends IDirectoryItem {
     public IFile createFile(String name) throws FileFileSystemException;
     public IFile openFile(String name) throws FileFileSystemException;

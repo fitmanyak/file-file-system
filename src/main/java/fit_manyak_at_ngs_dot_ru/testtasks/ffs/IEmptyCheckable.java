@@ -5,7 +5,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
  *         Created on 07.03.2017.
  */
 
-@SuppressWarnings("UnnecessaryInterfaceModifier")
+@SuppressWarnings({"UnnecessaryInterfaceModifier", "unused"})
 public interface IEmptyCheckable {
     public boolean isEmpty() throws FileFileSystemException;
 }

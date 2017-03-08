@@ -11,5 +11,5 @@ import java.io.IOException;
 @FunctionalInterface
 public interface ICommonOperationWithArgument<T> {
     @SuppressWarnings("EmptyMethod")
-    public int perform(T argument) throws IOException;
+    public int perform(@SuppressWarnings("unused") T argument) throws IOException;
 }

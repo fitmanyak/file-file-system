@@ -12,6 +12,7 @@ import java.nio.file.Path;
  *         Created on 19.02.2017.
  */
 
+@SuppressWarnings("unused")
 public class FileFileSystem implements IFileFileSystem {
     private final IRootDirectory rootDirectory;
 

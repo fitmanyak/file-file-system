@@ -5,7 +5,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs;
  *         Created on 06.03.2017.
  */
 
-@SuppressWarnings("UnnecessaryInterfaceModifier")
+@SuppressWarnings({"UnnecessaryInterfaceModifier", "unused"})
 public interface IDirectoryItem extends ICommonDirectoryEntry, IEmptyCheckable, ICloseable {
     public boolean isDirectory();
 

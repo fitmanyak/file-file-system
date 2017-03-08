@@ -7,6 +7,7 @@ import java.util.ResourceBundle;
  *         Created on 22.02.2017.
  */
 
+@SuppressWarnings("unused")
 public class Messages {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(Messages.class.getName());
 
@@ -33,14 +34,10 @@ public class Messages {
 
     public static final String BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_FLAGS_ERROR");
-    public static final String BAD_ROOT_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR =
-            BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR =
             BUNDLE.getString("BAD_ROOT_DIRECTORY_ENTRY_NAME_ERROR");
 
     public static final String BAD_DIRECTORY_ENTRY_FLAGS_ERROR = BUNDLE.getString("BAD_DIRECTORY_ENTRY_FLAGS_ERROR");
-    public static final String BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR =
-            BUNDLE.getString("BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_DIRECTORY_ENTRY_NAME_ERROR = BUNDLE.getString("BAD_DIRECTORY_ENTRY_NAME_ERROR");
 
     public static final String BAD_BLOCK_FILE_POSITION_ERROR = BUNDLE.getString("BAD_BLOCK_FILE_POSITION_ERROR");
@@ -99,6 +96,7 @@ public class Messages {
             BUNDLE.getString("CANT_REMOVE_NOT_EMPTY_DIRECTORY_ERROR");
     public static final String DIRECTORY_NOT_FILE_ERROR = BUNDLE.getString("DIRECTORY_NOT_FILE_ERROR");
     public static final String DIRECTORY_CONTENT_WRITE_ERROR = BUNDLE.getString("DIRECTORY_CONTENT_WRITE_ERROR");
+    public static final String DIRECTORY_CONTENT_READ_ERROR = BUNDLE.getString("DIRECTORY_CONTENT_READ_ERROR");
     public static final String DIRECTORY_SUB_ENTRY_MISSING_ERROR =
             BUNDLE.getString("DIRECTORY_SUB_ENTRY_MISSING_ERROR");
     public static final String DIRECTORY_SUB_ENTRY_OPEN_ERROR = BUNDLE.getString("DIRECTORY_SUB_ENTRY_OPEN_ERROR");

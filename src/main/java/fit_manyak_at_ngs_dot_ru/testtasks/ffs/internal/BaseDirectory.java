@@ -150,8 +150,8 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private void iterateOverSubEntries(SubEntryIterationContext context, ISubEntryVisitor visitor)
             throws FileFileSystemException {
         for (; context.index < context.count; context.index++) {
-            IOUtilities
-                    .readAndFlipBuffer(subEntryBlockChainHead, context.content::read, "Directory content read error");
+            IOUtilities.readAndFlipBuffer(subEntryBlockChainHead, context.content::read,
+                    Messages.DIRECTORY_CONTENT_READ_ERROR);
             context.blockChainHead = subEntryBlockChainHead.getInt();
             subEntryBlockChainHead.clear();
 
