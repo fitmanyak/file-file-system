@@ -1,6 +1,7 @@
 package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IActionWithArgument;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOperationWithArgument;
@@ -29,7 +30,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
 
     @Override
     public IInternalDirectory getAsDirectory() throws FileFileSystemException {
-        throw new FileFileSystemException("File isn't directory");// TODO
+        throw new FileFileSystemException(Messages.FILE_NOT_DIRECTORY_ERROR);
     }
 
     @Override
@@ -39,7 +40,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
 
     @Override
     public void setSize(long newSize) throws FileFileSystemException {
-        performAction(content -> content.setSize(newSize), "File change size error");// TODO
+        performAction(content -> content.setSize(newSize), Messages.FILE_SIZE_SET_ERROR);
     }
 
     private void performAction(IActionWithArgument<IDirectFile> action, String errorMessage)
@@ -56,7 +57,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
 
     @Override
     public void setPosition(long newPosition) throws FileFileSystemException {
-        performAction(content -> content.setPosition(newPosition), "File change position error");// TODO
+        performAction(content -> content.setPosition(newPosition), Messages.FILE_POSITION_SET_ERROR);
     }
 
     @Override
@@ -70,7 +71,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
     }
 
     private int performReadOperation(IOperationWithArgument<IDirectFile> readOperation) throws FileFileSystemException {
-        return performOperation(readOperation, "File read error");// TODO
+        return performOperation(readOperation, Messages.FILE_READ_ERROR);
     }
 
     private int performOperation(IOperationWithArgument<IDirectFile> operation, String errorMessage)
@@ -93,7 +94,7 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
     private int performWriteOperation(IOperationWithArgument<IDirectFile> writeOperation)
             throws FileFileSystemException {
 
-        return performOperation(writeOperation, "File write error");// TODO
+        return performOperation(writeOperation, Messages.FILE_WRITE_ERROR);
     }
 
     @Override
@@ -104,6 +105,6 @@ public class File extends DirectoryItem<IInternalFile, IFileDirectoryEntry> impl
     protected static IInternalFile create(String name, IInternalDirectory parentDirectory, IBlockManager blockManager)
             throws FileFileSystemException {
 
-        return createItem(name, parentDirectory, blockManager, FileDirectoryEntry::create, "File create error");// TODO
+        return createItem(name, parentDirectory, blockManager, FileDirectoryEntry::create, Messages.FILE_CREATE_ERROR);
     }
 }

@@ -109,4 +109,10 @@ public class Messages {
     public static final String BAD_DIRECTORY_CONTENT_SIZE_ERROR = BUNDLE.getString("BAD_DIRECTORY_CONTENT_SIZE_ERROR");
 
     public static final String DIRECTORY_CREATE_ERROR = BUNDLE.getString("DIRECTORY_CREATE_ERROR");
+
+    public static final String FILE_NOT_DIRECTORY_ERROR = BUNDLE.getString("FILE_NOT_DIRECTORY_ERROR");
+    public static final String FILE_POSITION_SET_ERROR = BUNDLE.getString("FILE_POSITION_SET_ERROR");
+    public static final String FILE_READ_ERROR = BUNDLE.getString("FILE_READ_ERROR");
+    public static final String FILE_WRITE_ERROR = BUNDLE.getString("FILE_WRITE_ERROR");
+    public static final String FILE_CREATE_ERROR = BUNDLE.getString("FILE_CREATE_ERROR");
 }
