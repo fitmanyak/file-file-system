@@ -4,6 +4,7 @@ import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectoryItem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.ErrorHandlingHelper;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IActionWithArgument;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.utilities.IOUtilities;
@@ -70,7 +71,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     @Override
     public void remove() throws FileFileSystemException {
         if (!isEmpty()) {
-            throw new FileFileSystemException("Can't remove directory because it isn't empty");// TODO
+            throw new FileFileSystemException(Messages.CANT_REMOVE_NOT_EMPTY_DIRECTORY_ERROR);
         }
 
         super.remove();
@@ -83,7 +84,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
 
     @Override
     public IInternalFile getAsFile() throws FileFileSystemException {
-        throw new FileFileSystemException("Directory isn't file");// TODO
+        throw new FileFileSystemException(Messages.DIRECTORY_NOT_FILE_ERROR);
     }
 
     @Override
@@ -111,7 +112,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
             throws FileFileSystemException {
 
         subEntryBlockChainHead.putInt(blockChainHead);
-        IOUtilities.flipBufferAndWrite(subEntryBlockChainHead, writeAction, "Directory content write error");// TODO
+        IOUtilities.flipBufferAndWrite(subEntryBlockChainHead, writeAction, Messages.DIRECTORY_CONTENT_WRITE_ERROR);
     }
 
     @Override
@@ -122,7 +123,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private IInternalDirectoryItem openItemInternal(String name) throws FileFileSystemException {
         SubEntryIterationContext context = findSubEntryByName(name);
         if (context.entry == null) {
-            throw new FileFileSystemException(String.format("Directory sub entry named %s is missing", name));// TODO
+            throw new FileFileSystemException(String.format(Messages.DIRECTORY_SUB_ENTRY_MISSING_ERROR, name));
         }
 
         return context.entry.getItem(this);
@@ -176,7 +177,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
             throws FileFileSystemException {
 
         return ErrorHandlingHelper.get(() -> DirectoryEntry.openAny(context.blockChainHead, getBlockManger()),
-                "Directory sub entry open error");// TODO
+                Messages.DIRECTORY_SUB_ENTRY_OPEN_ERROR);
     }
 
     @Override
@@ -202,8 +203,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     private IDirectFile checkNameUniqueInternal(String name) throws FileFileSystemException {
         SubEntryIterationContext context = findSubEntryByName(name);
         if (context.entry != null) {
-            throw new FileFileSystemException(
-                    String.format("Directory sub entry named %s already exists", name));// TODO
+            throw new FileFileSystemException(String.format(Messages.DIRECTORY_SUB_ENTRY_EXISTS_ERROR, name));
         }
 
         return context.content;
@@ -212,13 +212,13 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     @Override
     public void removeItem(int removedEntryBlockChainHead) throws FileFileSystemException {
         if (removedEntryBlockChainHead == IBlockManager.NULL_BLOCK_INDEX) {
-            throw new FileFileSystemException("Removed entry block chain head is invalid");// TODO
+            throw new FileFileSystemException(Messages.BAD_REMOVED_ENTRY_BLOCK_CHAIN_HEAD_ERROR);
         }
 
         SubEntryIterationContext context =
                 iterateOverSubEntries(ctx -> checkSubEntryBlockChainHeadEquals(removedEntryBlockChainHead, ctx));
         if (context.index == context.count) {
-            throw new FileFileSystemException("Removed entry is missing");// TODO
+            throw new FileFileSystemException(Messages.REMOVED_ENTRY_MISSING_ERROR);
         }
 
         context.index++;
@@ -264,7 +264,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     protected IDirectFile getContent() throws FileFileSystemException {
         IDirectFile content = super.getContent();
         if ((content.getSize() & BLOCK_INDEX_SIZE_MINUS_ONE) != 0L) {
-            throw new FileFileSystemException("Bad directory content size");// TODO
+            throw new FileFileSystemException(Messages.BAD_DIRECTORY_CONTENT_SIZE_ERROR);
         }
 
         return content;

@@ -94,4 +94,17 @@ public class Messages {
     public static final String DIRECTORY_ITEM_RENAME_ERROR = BUNDLE.getString("DIRECTORY_ITEM_RENAME_ERROR");
     public static final String DIRECTORY_ITEM_REMOVE_ERROR = BUNDLE.getString("DIRECTORY_ITEM_REMOVE_ERROR");
     public static final String DIRECTORY_ITEM_CONTENT_GET_ERROR = BUNDLE.getString("DIRECTORY_ITEM_CONTENT_GET_ERROR");
+
+    public static final String CANT_REMOVE_NOT_EMPTY_DIRECTORY_ERROR =
+            BUNDLE.getString("CANT_REMOVE_NOT_EMPTY_DIRECTORY_ERROR");
+    public static final String DIRECTORY_NOT_FILE_ERROR = BUNDLE.getString("DIRECTORY_NOT_FILE_ERROR");
+    public static final String DIRECTORY_CONTENT_WRITE_ERROR = BUNDLE.getString("DIRECTORY_CONTENT_WRITE_ERROR");
+    public static final String DIRECTORY_SUB_ENTRY_MISSING_ERROR =
+            BUNDLE.getString("DIRECTORY_SUB_ENTRY_MISSING_ERROR");
+    public static final String DIRECTORY_SUB_ENTRY_OPEN_ERROR = BUNDLE.getString("DIRECTORY_SUB_ENTRY_OPEN_ERROR");
+    public static final String DIRECTORY_SUB_ENTRY_EXISTS_ERROR = BUNDLE.getString("DIRECTORY_SUB_ENTRY_EXISTS_ERROR");
+    public static final String BAD_REMOVED_ENTRY_BLOCK_CHAIN_HEAD_ERROR =
+            BUNDLE.getString("BAD_REMOVED_ENTRY_BLOCK_CHAIN_HEAD_ERROR");
+    public static final String REMOVED_ENTRY_MISSING_ERROR = BUNDLE.getString("REMOVED_ENTRY_MISSING_ERROR");
+    public static final String BAD_DIRECTORY_CONTENT_SIZE_ERROR = BUNDLE.getString("BAD_DIRECTORY_CONTENT_SIZE_ERROR");
 }
