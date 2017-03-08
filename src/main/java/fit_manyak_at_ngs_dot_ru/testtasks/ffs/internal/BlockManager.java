@@ -192,11 +192,11 @@ public class BlockManager implements IBlockManager {
         @Override
         public void setPosition(long newPosition) throws FileFileSystemException {
             if (newPosition < 0L) {
-                throw new IllegalArgumentException("Bad block file position");// TODO
+                throw new IllegalArgumentException(Messages.BAD_BLOCK_FILE_POSITION_ERROR);
             }
 
             if (newPosition > size) {
-                throw new FileFileSystemException("Big block file position");// TODO
+                throw new FileFileSystemException(Messages.BIG_BLOCK_FILE_POSITION_ERROR);
             }
 
             if (position.getPosition() == newPosition) {
@@ -243,7 +243,7 @@ public class BlockManager implements IBlockManager {
         @Override
         public int read(ByteBuffer destination) throws FileFileSystemException {
             if (destination.isReadOnly()) {
-                throw new IllegalArgumentException("Read-only buffer");// TODO
+                throw new IllegalArgumentException(Messages.READ_ONLY_BUFFER_ERROR);
             }
 
             try {
@@ -365,7 +365,7 @@ public class BlockManager implements IBlockManager {
 
     @Override
     public void close() throws FileFileSystemException {
-        ErrorHandlingHelper.performAction(channel::close, "File channel close error");// TODO
+        ErrorHandlingHelper.performAction(channel::close, Messages.FILE_CHANNEL_CLOSE_ERROR);
     }
 
     @Override
@@ -383,7 +383,7 @@ public class BlockManager implements IBlockManager {
     }
 
     private static void checkBlockFileSize(long size) {
-        checkSize(size, 0L, MAXIMAL_BLOCK_FILE_SIZE, "Bad block file size %d (should be between %d and %d)");// TODO
+        checkSize(size, 0L, MAXIMAL_BLOCK_FILE_SIZE, Messages.BAD_BLOCK_FILE_SIZE_ERROR);
     }
 
     private static void checkSize(long size, long minimalSize, long maximalSize, String errorMessageFormat) {
@@ -420,7 +420,7 @@ public class BlockManager implements IBlockManager {
 
     private void checkEnoughFreeBlocks(int requiredBlockCount) throws FileFileSystemException {
         if (Integer.compareUnsigned(freeBlockCount, requiredBlockCount) < 0) {
-            throw new FileFileSystemException("Not enough free blocks");// TODO
+            throw new FileFileSystemException(Messages.NOT_ENOUGH_FREE_BLOCKS_ERROR);
         }
     }
 
@@ -440,7 +440,7 @@ public class BlockManager implements IBlockManager {
             nextBlockIndex.clear();
 
             if (blockIndex == NULL_BLOCK_INDEX) {
-                throw new FileFileSystemException("Unexpected end of block chain");// TODO
+                throw new FileFileSystemException(Messages.UNEXPECTED_END_BLOCK_CHAIN_ERROR);
             }
         }
 
@@ -480,7 +480,7 @@ public class BlockManager implements IBlockManager {
     private void writeFreeBlockData(int newFreeBlockCount, int newFreeBlockChainHead) throws FileFileSystemException {
         freeBlockData.putInt(newFreeBlockCount);
         freeBlockData.putInt(newFreeBlockChainHead);
-        flipBufferAndWrite(FREE_BLOCK_DATA_POSITION, freeBlockData, "Write free block data error");// TODO
+        flipBufferAndWrite(FREE_BLOCK_DATA_POSITION, freeBlockData, Messages.FREE_BLOCK_DATA_WRITE_ERROR);
 
         freeBlockCount = newFreeBlockCount;
         freeBlockChainHead = newFreeBlockChainHead;
@@ -499,7 +499,7 @@ public class BlockManager implements IBlockManager {
     private void writeNextBlockIndex(int blockIndex, int newNextBlockIndex) throws FileFileSystemException {
         nextBlockIndex.putInt(newNextBlockIndex);
         flipBufferAndWrite(getNextBlockIndexPosition(blockIndex), nextBlockIndex,
-                "Write next block index error");// TODO
+                Messages.NEXT_BLOCK_INDEX_WRITE_ERROR);
     }
 
     private void reallocate(int blockIndex, int remainingLength, int additionalBlockCount)
@@ -522,11 +522,11 @@ public class BlockManager implements IBlockManager {
 
     private void checkReleasedBlockCount(int releasedBlockCount) throws FileFileSystemException {
         if (Integer.compareUnsigned(blockCount, releasedBlockCount) < 0) {
-            throw new FileFileSystemException("Too many released blocks");// TODO
+            throw new FileFileSystemException(Messages.TOO_MANY_RELEASED_BLOCKS_ERROR);
         }
 
         if (Integer.compareUnsigned((blockCount - releasedBlockCount), freeBlockCount) < 0) {
-            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);// TODO
+            throw new FileFileSystemException(Messages.BAD_FREE_BLOCK_COUNT_ERROR);
         }
     }
 
@@ -584,7 +584,7 @@ public class BlockManager implements IBlockManager {
     private void writeWithinBlock(int blockIndex, int withinBlockPosition, ByteBuffer source)
             throws FileFileSystemException {
 
-        write(getAbsolutePosition(blockIndex, withinBlockPosition), source, "Block write error");// TODO
+        write(getAbsolutePosition(blockIndex, withinBlockPosition), source, Messages.BLOCK_WRITE_ERROR);
     }
 
     @Override
@@ -607,7 +607,8 @@ public class BlockManager implements IBlockManager {
         checkBlockFileSize(size);
 
         checkBlockChainHead(blockCount, getRequiredBlockCount(size), blockChainHead,
-                "Bad block file block chain length", "Bad block file block chain head", skipCheckBlockChainHead);// TODO
+                Messages.BAD_BLOCK_FILE_BLOCK_CHAIN_LENGTH_ERROR, Messages.BAD_BLOCK_FILE_BLOCK_CHAIN_HEAD_ERROR,
+                skipCheckBlockChainHead);
 
         return new BlockFile(size, blockChainHead);
     }
@@ -644,7 +645,8 @@ public class BlockManager implements IBlockManager {
         checkSize(size, MINIMAL_SIZE, MAXIMAL_SIZE, Messages.BAD_SIZE_FOR_FORMAT_ERROR);
 
         ErrorHandlingHelper.performActionWithCloseableArgument(() -> new RandomAccessFile(path.toString(), "rw"),
-                "File open error", file -> format(file, size, rootDirectoryEntryFormatter), "File close error");// TODO
+                Messages.FILE_OPEN_ERROR, file -> format(file, size, rootDirectoryEntryFormatter),
+                Messages.FILE_CLOSE_ERROR);
     }
 
     private static void format(RandomAccessFile file, long size,
@@ -653,11 +655,11 @@ public class BlockManager implements IBlockManager {
 
         long blockCountLong = (size - FIXED_SIZE_DATA_SIZE) / BLOCK_SIZE_PLUS_BLOCK_INDEX_SIZE;
         ErrorHandlingHelper
-                .performAction(() -> file.setLength(getTotalSize(blockCountLong)), "File size set error");// TODO
+                .performAction(() -> file.setLength(getTotalSize(blockCountLong)), Messages.FILE_SIZE_SET_ERROR);
 
-        ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, "File channel get error",
+        ErrorHandlingHelper.performActionWithCloseableArgument(file::getChannel, Messages.FILE_CHANNEL_GET_ERROR,
                 channel -> format(channel, blockCountLong, rootDirectoryEntryFormatter),
-                "File channel close error");// TODO
+                Messages.FILE_CHANNEL_CLOSE_ERROR);
     }
 
     private static void format(FileChannel channel, long blockCountLong,
@@ -672,7 +674,7 @@ public class BlockManager implements IBlockManager {
         fixedSizeData.putInt(blockCount);
         fixedSizeData.putInt(blockCount - ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
         fixedSizeData.putInt(ROOT_DIRECTORY_ENTRY_BLOCK_COUNT);
-        flipBufferAndWrite(fixedSizeData, channel, "Fixed-size data write error");// TODO
+        flipBufferAndWrite(fixedSizeData, channel, Messages.FIXED_SIZE_DATA_WRITE_ERROR);
 
         ByteBuffer nextBlockIndex = ByteBuffer.allocateDirect(BLOCK_INDEX_SIZE);
         writeNextBlockIndex(NULL_BLOCK_INDEX, nextBlockIndex, channel);
@@ -685,7 +687,7 @@ public class BlockManager implements IBlockManager {
 
         ByteBuffer rootDirectoryEntry = ByteBuffer.allocateDirect(BLOCK_SIZE);
         rootDirectoryEntryFormatter.accept(rootDirectoryEntry);
-        flipBufferAndWrite(rootDirectoryEntry, channel, "Root directory entry write error");// TODO
+        flipBufferAndWrite(rootDirectoryEntry, channel, Messages.ROOT_DIRECTORY_ENTRY_WRITE_ERROR);
     }
 
     private static long getTotalSize(int blockCount) {
@@ -706,13 +708,13 @@ public class BlockManager implements IBlockManager {
             throws FileFileSystemException {
 
         buffer.putInt(index);
-        flipBufferAndWrite(buffer, channel, "Next block index write error");// TODO
+        flipBufferAndWrite(buffer, channel, Messages.NEXT_BLOCK_INDEX_WRITE_ERROR);
     }
 
     public static IBlockManager mount(Path path) throws FileFileSystemException {
         return ErrorHandlingHelper.getWithCloseableArgument(
                 () -> FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE),
-                "File channel open error", BlockManager::mount);// TODO
+                Messages.FILE_CHANNEL_OPEN_ERROR, BlockManager::mount);
     }
 
     private static IBlockManager mount(FileChannel channel) throws FileFileSystemException {
@@ -744,7 +746,7 @@ public class BlockManager implements IBlockManager {
         checkBlockChainHead(blockCount, freeBlockCount, freeBlockChainHead, Messages.BAD_FREE_BLOCK_COUNT_ERROR,
                 Messages.BAD_FREE_BLOCK_CHAIN_HEAD_ERROR);
 
-        long size = ErrorHandlingHelper.get(channel::size, "File channel size get error");// TODO
+        long size = ErrorHandlingHelper.get(channel::size, Messages.FILE_CHANNEL_SIZE_GET_ERROR);
         if (getTotalSize(blockCount) != size) {
             throw new FileFileSystemException(Messages.BAD_SIZE_ERROR);
         }

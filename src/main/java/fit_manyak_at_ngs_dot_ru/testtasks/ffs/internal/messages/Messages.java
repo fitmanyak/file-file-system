@@ -42,4 +42,28 @@ public class Messages {
     public static final String BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR =
             BUNDLE.getString("BAD_DIRECTORY_ENTRY_CONTENT_BLOCK_CHAIN_HEAD_ERROR");
     public static final String BAD_DIRECTORY_ENTRY_NAME_ERROR = BUNDLE.getString("BAD_DIRECTORY_ENTRY_NAME_ERROR");
+
+    public static final String BAD_BLOCK_FILE_POSITION_ERROR = BUNDLE.getString("BAD_BLOCK_FILE_POSITION_ERROR");
+    public static final String BIG_BLOCK_FILE_POSITION_ERROR = BUNDLE.getString("BIG_BLOCK_FILE_POSITION_ERROR");
+    public static final String READ_ONLY_BUFFER_ERROR = BUNDLE.getString("READ_ONLY_BUFFER_ERROR");
+    public static final String FILE_CHANNEL_CLOSE_ERROR = BUNDLE.getString("FILE_CHANNEL_CLOSE_ERROR");
+    public static final String BAD_BLOCK_FILE_SIZE_ERROR = BUNDLE.getString("BAD_BLOCK_FILE_SIZE_ERROR");
+    public static final String NOT_ENOUGH_FREE_BLOCKS_ERROR = BUNDLE.getString("NOT_ENOUGH_FREE_BLOCKS_ERROR");
+    public static final String UNEXPECTED_END_BLOCK_CHAIN_ERROR = BUNDLE.getString("UNEXPECTED_END_BLOCK_CHAIN_ERROR");
+    public static final String FREE_BLOCK_DATA_WRITE_ERROR = BUNDLE.getString("FREE_BLOCK_DATA_WRITE_ERROR");
+    public static final String NEXT_BLOCK_INDEX_WRITE_ERROR = BUNDLE.getString("NEXT_BLOCK_INDEX_WRITE_ERROR");
+    public static final String TOO_MANY_RELEASED_BLOCKS_ERROR = BUNDLE.getString("TOO_MANY_RELEASED_BLOCKS_ERROR");
+    public static final String BLOCK_WRITE_ERROR = BUNDLE.getString("BLOCK_WRITE_ERROR");
+    public static final String BAD_BLOCK_FILE_BLOCK_CHAIN_LENGTH_ERROR =
+            BUNDLE.getString("BAD_BLOCK_FILE_BLOCK_CHAIN_LENGTH_ERROR");
+    public static final String BAD_BLOCK_FILE_BLOCK_CHAIN_HEAD_ERROR =
+            BUNDLE.getString("BAD_BLOCK_FILE_BLOCK_CHAIN_HEAD_ERROR");
+    public static final String FILE_OPEN_ERROR = BUNDLE.getString("FILE_OPEN_ERROR");
+    public static final String FILE_CLOSE_ERROR = BUNDLE.getString("FILE_CLOSE_ERROR");
+    public static final String FILE_SIZE_SET_ERROR = BUNDLE.getString("FILE_SIZE_SET_ERROR");
+    public static final String FILE_CHANNEL_GET_ERROR = BUNDLE.getString("FILE_CHANNEL_GET_ERROR");
+    public static final String FIXED_SIZE_DATA_WRITE_ERROR = BUNDLE.getString("FIXED_SIZE_DATA_WRITE_ERROR");
+    public static final String ROOT_DIRECTORY_ENTRY_WRITE_ERROR = BUNDLE.getString("ROOT_DIRECTORY_ENTRY_WRITE_ERROR");
+    public static final String FILE_CHANNEL_OPEN_ERROR = BUNDLE.getString("FILE_CHANNEL_OPEN_ERROR");
+    public static final String FILE_CHANNEL_SIZE_GET_ERROR = BUNDLE.getString("FILE_CHANNEL_SIZE_GET_ERROR");
 }
