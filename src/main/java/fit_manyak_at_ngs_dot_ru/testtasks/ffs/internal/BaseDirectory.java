@@ -240,6 +240,7 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
         return false;
     }
 
+    @SuppressWarnings("SameReturnValue")
     private boolean shiftSubEntryBlockChainHeadLeft(SubEntryIterationContext context) throws FileFileSystemException {
         context.content.savePosition(readPosition);
 
