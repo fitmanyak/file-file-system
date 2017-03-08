@@ -2,6 +2,8 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.test;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IDirectory;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFile;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IFileFileSystem;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.BlockManager;
 import org.junit.After;
@@ -38,6 +40,14 @@ public class FileFileSystemTest {
     private static final long FILE_SIZE = 12345L;
     private static final int FILE_RESIZE_FREE_BLOCK_COUNT = FILE_FREE_BLOCK_COUNT - BlockManager.getRequiredBlockCount(FILE_SIZE);
     private static final long FILE_RESIZE_FREE_SPACE = BlockManager.getSize(FILE_RESIZE_FREE_BLOCK_COUNT);
+
+    private static final String FILE_1 = "File 1";
+    private static final String FILE_2 = "File 2";
+    private static final String FILE_3 = "File 3";
+    private static final String[] NAMES = new String[] {FILE_1, FILE_2, FILE_3};
+    private static final String[] NAMES_REMOVE_2 = new String[] {FILE_1, FILE_3};
+    private static final String[] NAMES_REMOVE_2_1 = new String[] {FILE_3};
+    private static final String[] NAMES_REMOVE_2_1_3 = new String[] {};
 
     private IFileFileSystem fileFileSystem;
 
@@ -77,6 +87,8 @@ public class FileFileSystemTest {
     }
 
     private void removeDirectory() throws FileFileSystemException {
+        Assert.assertEquals(DIRECTORY_FREE_SPACE, fileFileSystem.getFreeSpace());
+
         fileFileSystem.getRootDirectory().openSubDirectory(DIRECTORY).remove();
 
         Assert.assertEquals(FREE_SPACE, fileFileSystem.getFreeSpace());
@@ -118,5 +130,35 @@ public class FileFileSystemTest {
         Assert.assertEquals(DIRECTORY_FREE_SPACE, fileFileSystem.getFreeSpace());
 
         removeDirectory();
+    }
+
+    @Test
+    public void testCreateAndRemoveFiles() throws FileFileSystemException {
+        testCreateDirectory();
+
+        IDirectory directory = fileFileSystem.getRootDirectory().openSubDirectory(DIRECTORY);
+        IFile file1 = directory.createFile(FILE_1);
+        IFile file2 = directory.createFile(FILE_2);
+        IFile file3 = directory.createFile(FILE_3);
+
+        assertNames(NAMES, directory);
+
+        file2.remove();
+
+        assertNames(NAMES_REMOVE_2, directory);
+
+        file1.remove();
+
+        assertNames(NAMES_REMOVE_2_1, directory);
+
+        file3.remove();
+
+        assertNames(NAMES_REMOVE_2_1_3, directory);
+
+        removeDirectory();
+    }
+
+    private void assertNames(String[] expectedNames, IDirectory directory) throws FileFileSystemException {
+        Assert.assertArrayEquals(expectedNames, directory.getNames().toArray());
     }
 }

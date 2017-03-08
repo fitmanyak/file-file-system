@@ -256,9 +256,18 @@ public abstract class BaseDirectory<TItem extends IInternalDirectory, TEntry ext
     @Override
     public Collection<String> getNames() throws FileFileSystemException {
         Collection<String> names = new ArrayList<>();
-        iterateOverSubEntries(context -> names.add(getEntry(context).getName()));
+        iterateOverSubEntries(context -> collectNames(names, context));
 
         return names;
+    }
+
+    @SuppressWarnings("SameReturnValue")
+    private boolean collectNames(Collection<String> names, SubEntryIterationContext context)
+            throws FileFileSystemException {
+
+        names.add(getEntry(context).getName());
+
+        return false;
     }
 
     @Override
