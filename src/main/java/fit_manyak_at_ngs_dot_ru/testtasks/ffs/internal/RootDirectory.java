@@ -2,6 +2,7 @@ package fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal;
 
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.FileFileSystemException;
 import fit_manyak_at_ngs_dot_ru.testtasks.ffs.IRootDirectory;
+import fit_manyak_at_ngs_dot_ru.testtasks.ffs.internal.messages.Messages;
 
 import java.nio.ByteBuffer;
 
@@ -19,12 +20,12 @@ public class RootDirectory extends BaseDirectory<IInternalRootDirectory, IRootDi
 
     @Override
     public void setName(String newName) throws FileFileSystemException {
-        throw new UnsupportedOperationException("Can't change root directory name");// TODO
+        throw new UnsupportedOperationException(Messages.CANT_RENAME_ROOT_DIRECTORY_ERROR);
     }
 
     @Override
     public void remove() throws FileFileSystemException {
-        throw new UnsupportedOperationException("Can't remove root directory");// TODO
+        throw new UnsupportedOperationException(Messages.CANT_REMOVE_ROOT_DIRECTORY_ERROR);
     }
 
     public static void format(ByteBuffer block) {
