@@ -10,5 +10,6 @@ import java.io.IOException;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
 public interface ICommonProvider<T> {
+    @SuppressWarnings("EmptyMethod")
     public T get() throws IOException;
 }

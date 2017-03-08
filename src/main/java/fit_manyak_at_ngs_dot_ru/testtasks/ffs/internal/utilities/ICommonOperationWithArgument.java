@@ -10,5 +10,6 @@ import java.io.IOException;
 @SuppressWarnings("UnnecessaryInterfaceModifier")
 @FunctionalInterface
 public interface ICommonOperationWithArgument<T> {
+    @SuppressWarnings("EmptyMethod")
     public int perform(T argument) throws IOException;
 }
