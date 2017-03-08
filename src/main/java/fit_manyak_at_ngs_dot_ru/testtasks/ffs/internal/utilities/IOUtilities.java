@@ -19,7 +19,8 @@ public class IOUtilities {
     }
 
     public static void readAndFlipBuffer(ByteBuffer destination, IActionWithArgument<ByteBuffer> readAction,
-                                         String errorMessage) throws FileFileSystemException {
+                                         @SuppressWarnings("SameParameterValue") String errorMessage)
+            throws FileFileSystemException {
 
         ErrorHandlingHelper.performAction(() -> readAndFlipBuffer(destination, readAction), errorMessage);
     }

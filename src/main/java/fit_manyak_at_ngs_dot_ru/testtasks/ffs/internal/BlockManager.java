@@ -447,7 +447,8 @@ public class BlockManager implements IBlockManager {
         return blockIndex;
     }
 
-    private void readAndFlipBuffer(long position, ByteBuffer destination, String errorMessage)
+    private void readAndFlipBuffer(long position, ByteBuffer destination,
+                                   @SuppressWarnings("SameParameterValue") String errorMessage)
             throws FileFileSystemException {
 
         IOUtilities.readAndFlipBuffer(destination, dst -> read(position, dst, errorMessage));
@@ -614,8 +615,9 @@ public class BlockManager implements IBlockManager {
     }
 
     private static void checkBlockChainHead(int blockCount, int blockChainLength, int blockChainHead,
-                                            String badBlockChainLengthErrorMessage,
-                                            String badBlockChainHeadErrorMessage) throws FileFileSystemException {
+                                            @SuppressWarnings("SameParameterValue") String badBlockChainLengthErrorMessage,
+                                            @SuppressWarnings("SameParameterValue") String badBlockChainHeadErrorMessage)
+            throws FileFileSystemException {
 
         checkBlockChainHead(blockCount, blockChainLength, blockChainHead, badBlockChainLengthErrorMessage,
                 badBlockChainHeadErrorMessage, false);
