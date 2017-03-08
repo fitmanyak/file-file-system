@@ -107,4 +107,6 @@ public class Messages {
             BUNDLE.getString("BAD_REMOVED_ENTRY_BLOCK_CHAIN_HEAD_ERROR");
     public static final String REMOVED_ENTRY_MISSING_ERROR = BUNDLE.getString("REMOVED_ENTRY_MISSING_ERROR");
     public static final String BAD_DIRECTORY_CONTENT_SIZE_ERROR = BUNDLE.getString("BAD_DIRECTORY_CONTENT_SIZE_ERROR");
+
+    public static final String DIRECTORY_CREATE_ERROR = BUNDLE.getString("DIRECTORY_CREATE_ERROR");
 }
